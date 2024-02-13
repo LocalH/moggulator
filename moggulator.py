@@ -76,12 +76,6 @@ def main():
         fin = open(infile, 'rb')
     if outfile:
         fout = open(outfile, 'wb')
-   
-    if verbose:
-        if xbox:
-            flog.write("deriving xbox keys\n")
-        else:
-            flog.write("deriving ps3 keys\n")
 
     ret = mogglib.decrypt_mogg(xbox, fin, fout, flog, verbose)
 
