@@ -7,13 +7,13 @@ import os
 
 def usage():
     #print(f'usage: {sys.argv[0]} [-h] [-e] [-i <input>] [-o <output>] [-v]')
-    print(f'usage: {os.path.relpath(sys.argv[0])} [-h] [-i <input>] [-o <output>] [-v]')
+    print(f'usage: {os.path.relpath(sys.argv[0])} [-h] [-i <input>] [-o <output>] [-p] [-v]')
     print("   -h / --help : print usage")
     #print("   -e / --encrypt: encrypt mogg")
     print("   -i <input> / --input=<input> : read mogg from <input>")
     print("   -o <output> / --output=<output> : write mogg to <output>")
+    print("   -p / --ps3: use ps3 key derivation")
     print("   -v / --verbose: verbose output to stderr\n")
-    print("   -p / --ps3: use ps3 key derivation\n")
     print("Default with no arguments is to read from stdin and write to stdout, deriving Xbox keys.")
     print("Default action is to decrypt. Encryption coming in the future.")
 
@@ -76,6 +76,11 @@ def main():
         fin = open(infile, 'rb')
     if outfile:
         fout = open(outfile, 'wb')
+   
+    if xbox:
+        print("using xbox keys for decryption")
+    else:
+        print("using ps3 keys for decryption")
 
     ret = mogglib.decrypt_mogg(xbox, fin, fout, flog, verbose)
 

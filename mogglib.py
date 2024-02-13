@@ -117,14 +117,14 @@ def do_crypt(key, mogg_data, decmogg_data, file_nonce, ogg_offset):
     
 def gen_key(xbox, hvkey, mogg_data, decmogg_data, version, verbose, flog):
     if verbose:
-        flog.write("deriving xbox keys\n")
+        flog.write("deriving xbox key\n")
     xboxkey = gen_key_inner(True, hvkey, mogg_data, decmogg_data, version, verbose, flog)
     if verbose:
-        flog.write("deriving ps3 keys\n")
+        flog.write("deriving ps3 key\n")
     ps3key = gen_key_inner(False, hvkey, mogg_data, decmogg_data, version, verbose, flog)
     
     if ps3key != xboxkey:
-        print("ps3 key does not match xbox key")
+        print("ps3 key does not match xbox key, decryption may fail if using ps3 key\n")
 
     match xbox:
         case True:
