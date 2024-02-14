@@ -214,14 +214,17 @@ def lcg(x):
 def grind_array(magicA, magicB, key, version, verbose, flog):
     return
     
-def rotr(x, n):
-    return
-    
 def rotl(x, n):
-    return
+    return ((x << (n & 31) | x >> (8 - n & 31)) & 255)
+    
+def rotr(x, n):
+    return ((x >> (n & 31) | x << (8 - n & 31)) & 255)
 
 def onot(x):
-    return
+    if x == 0:
+        return 1
+    else:
+        return 0
     
 def o_funcs(a1, a2, op):
     return
