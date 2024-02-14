@@ -227,7 +227,145 @@ def onot(x):
         return 0
     
 def o_funcs(a1, a2, op):
-    return
+    a1 = int.a1
+    a2 = int.a2
+    match op:
+        case 0:   # original 32 O funcs from v12
+            ret = a2 + rotr(a1, onot(a2))
+        case 1:
+            ret = a2 + rotr(a1, 3)
+        case 2:
+            ret = a2 + rotl(a1, 1)
+        case 3:
+            ret = a2 ^ (a1 >> (a2 & 7 & 31) | (a1 << (-a2 & 7 & 31)))
+        case 4:
+            ret = a2 ^ rotl(a1, 4)
+        case 5:
+            ret = a2 + (a2 ^  rotr(a1, 3))
+        case 6:
+            ret = a2 + rotl(a1, 2)
+        case 7:
+            ret = a2 + onot(a1)
+        case 8:
+            ret = a2 ^ rotr(a1, onot(a2))
+        case 9:
+            ret = a2 ^ (a2 + rotl(a1, 3))
+        case 10:
+            ret = a2 + rotl(a1, 3)
+        case 11:
+            ret = a2 + rotl(a1, 4)
+        case 12:
+            ret = a1 ^ a2
+        case 13:
+            ret = a2 ^ onot(A1)
+        case 14:
+            ret = a2 ^ (a2 + rotr(a1, 3))
+        case 15:
+            ret = a2 ^ rotl(a1, 3)
+        case 16:
+            ret = a2 ^ rotl(a1, 2)
+        case 17:
+            ret = a2 + (a2 ^ rotl(a1, 3))
+        case 18:
+            ret = a2 + (a1 ^ a2)
+        case 19:
+            ret = a1 + a2
+        case 20:
+            ret = a2 ^ rotr(a1, 3)
+        case 21:
+            ret = a2 ^ (a1 + a2)
+        case 22:
+            ret = rotr(a1, onot(a2))
+        case 23:
+            ret = a2 + rotr(a1, 1)
+        case 24:
+            ret = a1 >> (a2 & 7 & 31) | a1 << (-a2 & 7 & 31)
+        case 25:
+            if a1 == 0:
+                if a2 == 0:
+                    ret = 128
+                else:
+                    ret = 1
+            else:
+                ret = 0
+        case 26:
+            ret = a2 + rotr(a1, 2)
+        case 27:
+            ret = a2 ^ rotr(a1, 1)
+        case 28:
+            ret = o_funcs(not(a1), a2, 24)
+        case 29:
+            ret = a2 ^ rotr(a1, 2)
+        case 30:
+            ret = a2 + (a1 >> (a2 & 7 & 31) | (a1 << (-a2 & 7 & 31)))
+        case 31:
+            ret = a2 ^ rotl(a1, 1)
+
+        case 32: # additional 32 O funcs added in v14, much nastier looking
+            ret = ((a1 << 0x08 | 0xaa | a1 ^ 0xff) >> 4)
+        case 33:
+            ret = (a1 ^ 0xff | a1 << 8) >> 3 ^ a2
+        case 34:
+            ret = (a1 << 8 ^ 0xff00 | a1) >> 2 ^ a2
+        case 35:
+            ret = (a1 ^ 0x5c | a1 << 8) >> 5 ^ a2
+        case 36:
+            ret = (a1 << 8 | 0x65 | a1 ^ 0x3c) >> 2 ^ a2
+        case 37:
+            ret = (a1 ^ 0x36 | a1 << 8) >> 2 ^ a2
+        case 38:
+            ret = (a1 ^ 0x36 | a1 << 8) >> 4 ^ a2
+        case 39:
+            ret = (a1 ^ 0x5c | a1 << 8 | 0x36) >> 1 ^ a2
+        case 40:
+            ret = (a1 ^ 0xff | a1 << 8) >> 4 ^ a2
+        case 41:
+            ret = (not(a1) << 8 | a1) >> 6 ^ a2
+        case 42:
+            ret = (a1 ^ 0x5c | a1 << 8) >> 3 ^ a2
+        case 43:
+            ret = (a1 ^ 0x3c | 0x65 | a1 << 8) >> 5 ^ a2
+        case 44:
+            ret = (a1 ^ 0x36 | a1 << 8) >> 3 ^ a2
+        case 45:
+            ret = (a1 ^ 0x65 | a1 << 8 | 0x3c) >> 6 ^ a2
+        case 46:
+            ret = (a1 ^ 0x5c | a1 << 8) >> 2 ^ a2
+        case 47:
+            ret = (a2 ^ 0xaa | a2 << 8 | 0xff) >> 3 ^ a1
+        case 48:
+            ret = (a1 ^ 0x63 | a1 << 8 | 0x5c) >> 6 ^ a2
+        case 49:
+            ret = (a1 ^ 0x5c | a1 << 8 | 0x36) >> 7 ^ a2
+        case 50:
+            ret = (a1 ^ 0x5c | a1 << 8) >> 6 ^ a2
+        case 51:
+            ret = (a1 << 8 ^ 0xff00 | a1) >> 3 ^ a2
+        case 52:
+            ret = (a1 ^ 0xff | a1 << 8) >> 6 ^ a2
+        case 53:
+            ret = (a1 << 8 ^ 0xff00 | a1) >> 5 ^ a2
+        case 54:
+            ret = (a1 ^ 0x3c | 0x65 | a1 << 8) >> 4 ^ a2
+        case 55:
+            ret = (a1 ^ 0x63 | a1 << 8 | 0x5c) >> 3 ^ a2
+        case 56:
+            ret = (a1 ^ 0x63 | a1 << 8 | 0x5c) >> 5 ^ a2
+        case 57:
+            ret = (a1 ^ 0xaf | a1 << 8 | 0xfa) >> 5 ^ a2
+        case 58:
+            ret = (a1 ^ 0x5c | a1 << 8 | 0x36) >> 5 ^ a2
+        case 59:
+            ret = (a1 ^ 0x5c | a1 << 8 | 0x36) >> 3 ^ a2
+        case 60:
+            ret = (a1 ^ 0x36 | a1 << 8) >> 3 ^ a2
+        case 61:
+            ret = (a1 ^ 0x63 | a1 << 8 | 0x5c) >> 4 ^ a2
+        case 62:
+            ret = (a1 ^ 0xff | a1 << 8 | 0xaf) >> 6 ^ a2
+        case 63:
+            ret = (a1 ^ 0xff | a1 << 8) >> 2 ^ a2
+    return ret
     
 def hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size):
     return
