@@ -192,15 +192,26 @@ def roll(x):
     return (x + 0x13) % 0x20
 
 def ascii_digit_to_hex(h):
-    return
+    if h < 0x61 or 0x66 < h:
+        if h < 0x41 or 0x46 < h:
+            return (h - 0x30)
+        else:
+            return (h - 0x37)
+    else:
+        return (h + 0xa9)
     
 def hex_string_to_bytes(s):
-    return
+    arr = bytearray(16)
+    for i in range (0,15):
+        lo = ascii_digit_to_hex(s[i*2+1])
+        hi = ascii_digit_to_hex(s[i*2])
+        arr[i] = (lo + hi * 16)
+    return arr
     
 def lcg(x):
-    return
+    return (x * 0x19660d) + 0x3c63f35f
     
-def grind_array(magicA, magicB, key, version):
+def grind_array(magicA, magicB, key, version, verbose, flog):
     return
     
 def rotr(x, n):
