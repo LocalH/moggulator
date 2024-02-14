@@ -114,7 +114,7 @@ def do_crypt(key, mogg_data, decmogg_data, file_nonce, ogg_offset):
            decmogg_data[k] = mogg_data[k] ^ block_mask[block_offset]
         block_offset = block_offset + 1
     return
-    
+
 def gen_key(xbox, hvkey, mogg_data, decmogg_data, version, verbose, flog):
     if verbose:
         flog.write("deriving xbox key\n")
@@ -122,7 +122,7 @@ def gen_key(xbox, hvkey, mogg_data, decmogg_data, version, verbose, flog):
     if verbose:
         flog.write("deriving ps3 key\n")
     ps3key = gen_key_inner(False, hvkey, mogg_data, decmogg_data, version, verbose, flog)
-    
+
     if ps3key != xboxkey:
         print("ps3 key does not match xbox key, decryption may fail if using ps3 key\n")
 
@@ -131,7 +131,7 @@ def gen_key(xbox, hvkey, mogg_data, decmogg_data, version, verbose, flog):
             return xboxkey
         case False:
             return ps3key
-            
+        
 def gen_key_inner(xbox, hvkey, mogg_data, decmogg_data, version, verbose, flog):
     return
 
@@ -199,7 +199,7 @@ def ascii_digit_to_hex(h):
             return (h - 0x37)
     else:
         return (h + 0xa9)
-    
+
 def hex_string_to_bytes(s):
     arr = bytearray(16)
     for i in range (0,15):
@@ -207,16 +207,16 @@ def hex_string_to_bytes(s):
         hi = ascii_digit_to_hex(s[i*2])
         arr[i] = (lo + hi * 16)
     return arr
-    
+
 def lcg(x):
     return (x * 0x19660d) + 0x3c63f35f
-    
+
 def grind_array(magicA, magicB, key, version, verbose, flog):
     return
-    
+
 def rotl(x, n):
     return ((x << (n & 31) | x >> (8 - n & 31)) & 255)
-    
+
 def rotr(x, n):
     return ((x >> (n & 31) | x << (8 - n & 31)) & 255)
 
@@ -225,7 +225,7 @@ def onot(x):
         return 1
     else:
         return 0
-    
+
 def o_funcs(a1, a2, op):
     a1 = int.a1
     a2 = int.a2
@@ -366,7 +366,7 @@ def o_funcs(a1, a2, op):
         case 63:
             ret = (a1 ^ 0xff | a1 << 8) >> 2 ^ a2
     return ret
-    
+
 def hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size, flog, verbose):
     magic_a = int.from_bytes(decmogg_data[20+hmx_header_size*8+16:20+hmx_header_size*8+20],"little")
     magic_b = int.from_bytes(decmogg_data[20+hmx_header_size*8+16+8:20+hmx_header_size*8+16+12],"little")
@@ -384,11 +384,11 @@ def decrypt_mogg(xbox, fin, fout, flog, verbose):
     failed = 0
     mogg_data = fin.read()
     decmogg_data = bytearray(len(mogg_data))
-    
-    version = mogg_data[0]    
+
+    version = mogg_data[0]
     if verbose:
         flog.write(f'mogg version: {version}\n')
-    
+
     match version:
         case 11:
             key = ctrkey_11
@@ -425,7 +425,7 @@ def decrypt_mogg(xbox, fin, fout, flog, verbose):
     if verbose:
         flog.write(f'ogg_offset: {ogg_offset}\n')
         flog.write(f'hmx_header_size: {hmx_header_size} ({hmx_header_size*8} bytes)\n')
-       
+   
     decmogg_data[0:len(mogg_data)] = mogg_data[0:len(mogg_data)] #use this for now so there is data for later
 
     #decmogg_data[0:ogg_offset-1] = mogg_data[0:ogg_offset-1] #use this for when decryption is done enough
@@ -435,14 +435,14 @@ def decrypt_mogg(xbox, fin, fout, flog, verbose):
     if verbose:
         flog.write(f'nonce_offset: {nonce_offset}\n')
         flog.write(f'nonce: {nonce.hex().upper()}\n')
-        
+    
     if verbose:
         flog.write(f'masher: {masher.hex().upper()}\n')
 
     #do_crypt(key, mogg_data, decmogg_data, nonce, ogg_offset)
 
     hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size, flog, verbose) #just here to test the routine itself
-   
+
     if decmogg_data[ogg_offset:ogg_offset+4] == bytearray(b'\x48\x4d\x58\x41'):
         hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size, flog, verbose)
     else:
@@ -451,7 +451,7 @@ def decrypt_mogg(xbox, fin, fout, flog, verbose):
             flog.write(f'first four bytes of ogg data: {decmogg_data[ogg_offset:ogg_offset+4].hex().upper()}\n')
         fout.close()
         failed = 1
-    
+
     if decmogg_data[ogg_offset:ogg_offset+4] != bytearray(b'\x4f\x67\x67\x53'):
         print("failed HMXA to OggS")
         fout.close()
