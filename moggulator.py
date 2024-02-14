@@ -12,9 +12,9 @@ def usage():
     #print("   -e / --encrypt: encrypt mogg")
     print("   -i <input> / --input=<input> : read mogg from <input>")
     print("   -o <output> / --output=<output> : write mogg to <output>")
-    print("   -p / --ps3: use ps3 key derivation")
+    print("   -p / --ps3: use ps3 key to decrypt")
     print("   -v / --verbose: verbose output to stderr\n")
-    print("Default with no arguments is to read from stdin and write to stdout, deriving Xbox keys.")
+    print("Default with no arguments is to read from stdin and write to stdout, decrypting with Xbox keys.")
     print("Default action is to decrypt. Encryption coming in the future.")
 
 def main():

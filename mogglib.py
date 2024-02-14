@@ -136,32 +136,61 @@ def gen_key_inner(xbox, hvkey, mogg_data, decmogg_data, version, verbose, flog):
     return
 
 def reveal_key(key, masher):
-    return
+    supershuffle(key)
+    mash(key, masher)
 
 def supershuffle(key):
+    shuffle1(key)
+    shuffle2(key)
+    shuffle3(key)
+    shuffle4(key)
+    shuffle5(key)
+    shuffle6(key)
     return
 
 def shuffle1(key):
-    return
+    for i in range(0,7):
+        o = roll(i<<2)
+        key[o],key[(i*4)+2] = key[(i*4)+2],key[o]
+        o = roll((i*4)+3)
+        key[o],key[(i*4)+1] = key[(i*4)+1],key[o]
 
 def shuffle2(key):
-    return
+    for i in range(0,7):
+        key[((7-i)*4)+1],key[(i*4)+2] = key[(i*4)+2],key[((7-i)*4)+1]
+        key[(7-i)*4],key[(i*4)+3] = key[(i*4)+3],key[(7-i)*4]
 
 def shuffle3(key):
-    return
+    for i in range(0,7):
+        o = roll(((7-i)*4)+1)
+        key[o],key[(i*4)+2] = key[(i*4)+2],key[o]
+        key[(7-i)*4],key[(i*4)+3] = key[(i*4)+3],key[(7-i)*4]
 
 def shuffle4(key):
-    return
+    for i in range(0,7):
+        key[((7-i)*4)+1],key[(i*4)+2]
+        o = roll((7-i)*4)
+        key[o],key[(i*4)+3]
 
 def shuffle5(key):
-    return
+    for i in range(0,7):
+        o = roll((i*4)+2)
+        key[((7-i)*4)+1],key[o] = key[o],key[((7-i)*4)+1]
+        key[(7-i)*4],key[(i*4)+3] = key[(i*4)+3],key[(7-i)*4]
 
 def shuffle6(key):
-    return
+    for i in range(0,7):
+        key[((7-i)*4)+1],key[(i*4)+2] = key[(i*4)+2],key[((7-i)*4)+1]
+        o = roll((i*4)+3)
+        key[(7-i)*4],key[o] = key[o],key[(7-i)*4]
+
+def mash(key, masher)
+    for i in range(0,31):
+        key[i] = key[i] ^ masher[i]
 
 def roll(x):
-    return
-    
+    return (x + 0x13) % 0x20
+
 def ascii_digit_to_hex(h):
     return
     
@@ -237,7 +266,7 @@ def decrypt_mogg(xbox, fin, fout, flog, verbose):
        
     decmogg_data[0:len(mogg_data)] = mogg_data[0:len(mogg_data)] #use this for now so there is data for later
 
-    #decmogg_data[0:ogg_offset] = mogg_data[0:ogg_offset] #use this for when decryption is done enough
+    #decmogg_data[0:ogg_offset-1] = mogg_data[0:ogg_offset-1] #use this for when decryption is done enough
 
     nonce_offset = 20 + hmx_header_size * 8
     nonce = bytearray(mogg_data[nonce_offset:nonce_offset+16])
@@ -260,7 +289,7 @@ def decrypt_mogg(xbox, fin, fout, flog, verbose):
         failed = 1
     
     if decmogg_data[ogg_offset:ogg_offset+4] != bytearray(b'\x4f\x67\x67\x53'):
-        print("failed HMXA to Oggs")
+        print("failed HMXA to OggS")
         fout.close()
         failed = 1
 
