@@ -367,7 +367,17 @@ def o_funcs(a1, a2, op):
             ret = (a1 ^ 0xff | a1 << 8) >> 2 ^ a2
     return ret
     
-def hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size):
+def hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size, flog, verbose):
+    magic_a = int.from_bytes(decmogg_data[20+hmx_header_size*8+16:20+hmx_header_size*8+20],"little")
+    magic_b = int.from_bytes(decmogg_data[20+hmx_header_size*8+16+8:20+hmx_header_size*8+16+12],"little")
+    if verbose:
+        flog.write(f'magic_a: {magic_a:08X}\n')
+        flog.write(f'magic_b: {magic_b:08X}\n')
+    magic_hash_a = lcg(lcg(magic_a ^ 0x5c5c5c5c)) & 0xffffffffffffffff
+    magic_hash_b = lcg(magic_b ^ 0x36363636) & 0xffffffffffffffff
+    if verbose:
+        flog.write(f'magic_hash_a: {magic_hash_a:016X}\n')
+        flog.write(f'magic_hash_b: {magic_hash_b:016X}\n')
     return
 
 def decrypt_mogg(xbox, fin, fout, flog, verbose):
@@ -430,9 +440,11 @@ def decrypt_mogg(xbox, fin, fout, flog, verbose):
         flog.write(f'masher: {masher.hex().upper()}\n')
 
     #do_crypt(key, mogg_data, decmogg_data, nonce, ogg_offset)
+
+    hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size, flog, verbose) #just here to test the routine itself
    
     if decmogg_data[ogg_offset:ogg_offset+4] == bytearray(b'\x48\x4d\x58\x41'):
-        hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size)
+        hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size, flog, verbose)
     else:
         print("decrypted mogg data did not start with HMXA (484D5841)")
         if verbose:
