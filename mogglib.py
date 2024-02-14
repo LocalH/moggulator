@@ -184,7 +184,7 @@ def shuffle6(key):
         o = roll((i*4)+3)
         key[(7-i)*4],key[o] = key[o],key[(7-i)*4]
 
-def mash(key, masher)
+def mash(key, masher):
     for i in range(0,31):
         key[i] = key[i] ^ masher[i]
 
