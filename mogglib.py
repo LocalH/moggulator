@@ -1,4 +1,4 @@
-from pudb import set_trace; set_trace(paused=False)
+#from pudb import set_trace; set_trace(paused=False)
 
 from Crypto.Cipher import AES
 import getopt
@@ -97,34 +97,35 @@ b'\x81\x84\x19\x91\x45\x40\x3f\x9d\x7c\x47\xf4\x5d\x57\x56\x80\x30\xd9\x98\x1c\x
 b'\xb5\xa2\x15\x9d\x15\x86\x9f\x6e\x80\x55\x8c\xe6\x6c\x68\x71\xee\x7e\xed\x19\x9c\xb0\x80\xc5\x5f\xdc\x9f\xd1\x4a\x01\x36\xf4\x39',
 ]
 
-def do_crypt(key, mogg_data, decmogg_data, file_nonce, ogg_offset):
+def do_crypt(key, mogg_data, decmogg_data, file_nonce, ogg_offset, verbose, flog):
+    print(f'ogg stream size: {len(mogg_data)-ogg_offset} ({(len(mogg_data)-ogg_offset)/16} blocks)')
     cipher = AES.new(key, AES.MODE_ECB)
     nonce = bytearray(len(file_nonce))
     nonce[0:15] = file_nonce[0:15]
     block_mask = cipher.decrypt(nonce)
     block_offset = 0
-    for i in range (ogg_offset, len(mogg_data)):
-        while block_offset != 16:
-           for j in range(0,16):
-               nonce[j] = nonce[j]+1
-               if nonce[j] != 0:
-                   break
-           block_mask = cipher.decrypt(nonce)
-        for k in range(0,15):
-           decmogg_data[k] = mogg_data[k] ^ block_mask[block_offset]
+    for i in range (ogg_offset, len(mogg_data)-ogg_offset):
+        if block_offset == 16:
+            for j in range(0,15):
+                nonce[j] = (nonce[j]+1) & 0xff
+                if nonce[j] != 0:
+                    break
+            block_mask = cipher.decrypt(nonce)
+            block_offset = 0
+        decmogg_data[i] = mogg_data[i] ^ block_mask[block_offset]
         block_offset = block_offset + 1
     return
 
-def gen_key(xbox, hvkey, mogg_data, decmogg_data, version, verbose, flog):
-    if verbose:
-        flog.write("deriving xbox key\n")
-    xboxkey = gen_key_inner(True, hvkey, mogg_data, decmogg_data, version, verbose, flog)
+def gen_key(xbox, hvkey, mogg_data, version, verbose, flog):
     if verbose:
         flog.write("deriving ps3 key\n")
-    ps3key = gen_key_inner(False, hvkey, mogg_data, decmogg_data, version, verbose, flog)
+    ps3key = gen_key_inner(False, hvkey, mogg_data, version, verbose, flog)
+    if verbose:
+        flog.write("deriving xbox key\n")
+    xboxkey = gen_key_inner(True, hvkey, mogg_data, version, verbose, flog)
 
     if ps3key != xboxkey:
-        print("ps3 key does not match xbox key, decryption may fail if using ps3 key\n")
+        print("ps3 key does not match xbox key, decryption may fail if using ps3 key")
 
     match xbox:
         case True:
@@ -132,21 +133,97 @@ def gen_key(xbox, hvkey, mogg_data, decmogg_data, version, verbose, flog):
         case False:
             return ps3key
         
-def gen_key_inner(xbox, hvkey, mogg_data, decmogg_data, version, verbose, flog):
-    return
+def gen_key_inner(xbox, hvkey, mogg_data, version, verbose, flog):
+    key_mask = bytearray(16)
+    hmx_header_size = int.from_bytes(mogg_data[16:20], "little")
+    if xbox:
+        key_mask[0:16] = mogg_data[20+hmx_header_size*8+16+32:20+hmx_header_size*8+16+48]
+    else:
+        key_mask[0:16] = mogg_data[20+hmx_header_size*8+16+16:20+hmx_header_size*8+16+32]
+    if verbose:
+        flog.write(f'key_mask: {key_mask.hex().upper()}\n')
+    if xbox:
+        mask_cipher = AES.new(hvkey, AES.MODE_ECB)
+        key_mask = mask_cipher.decrypt(key_mask)
+        if verbose:
+            flog.write(f'decrypted key_mask: {key_mask.hex().upper()}\n')
+    magic_a = int.from_bytes(mogg_data[20+hmx_header_size*8+16:20+hmx_header_size*8+16+4], "little")
+    magic_b = int.from_bytes(mogg_data[20+hmx_header_size*8+16+8:20+hmx_header_size*8+16+12], "little")
+    magic_hash_a = lcg(lcg(magic_a ^ 0x5c5c5c5c)) & 0xffffffffffffffff
+    magic_hash_b = lcg(magic_b ^ 0x36363636) & 0xffffffffffffffff
+    hdr_offset = 20+hmx_header_size*8+16+48
+    if version == 17:
+        use_new_hidden_keys = int.from_bytes(mogg_data[hdr_offset:hdr_offset+8], "little")
+        hdr_offset = hdr_offset + 8
+        match use_new_hidden_keys:
+            case 1:
+                v17_game = "Rock Band 4"
+            case 4:
+                v17_game = "DropMix"
+            case 6:
+                v17_game = "Dance Central VR"
+            case 8:
+                v17_game = "Audica"
+            case 10:
+                v17_game = "FUSER"
+            case _:
+                print("Unknown game! Please notify LocalH and send him the mogg that gave you this message.")
+        if verbose:
+            flog.write(f'use_new_hidden_keys: {use_new_hidden_keys} ({v17_game})\n')
+    key_index = int.from_bytes(mogg_data[hdr_offset:hdr_offset+8], "little") % 6
+    if xbox:
+        key_index = key_index + 6
+    if verbose:
+        flog.write(f'key_index: {key_index}\n')
+    match version:
+        case 12 | 13 | 14 | 15 | 16:
+            selected_key = bytearray(hidden_keys[key_index])
+        case 17:
+            match use_new_hidden_keys:
+                case 1:
+                    selected_key = bytearray(hidden_keys_17_1[key_index])
+                case 4:
+                    selected_key = bytearray(hidden_keys_17_4[key_index])
+                case 6:
+                    selected_key = bytearray(hidden_keys_17_6[key_index])
+                case 8:
+                    selected_key = bytearray(hidden_keys_17_8[key_index])
+                case 10:
+                    selected_key = bytearray(hidden_keys_17_10[key_index])
+    if verbose:
+        flog.write(f'selected_key: {selected_key.hex().upper()}\n')
+    revealed_key = reveal_key(selected_key, masher)
+    if verbose:
+        flog.write(f'revealed_key: {revealed_key.hex().upper()}\n')
+    bytes_from_hex_string = hex_string_to_bytes(revealed_key)
+#    if version < 17:
+#        if verbose:
+#            flog.write(f'revealed_key char: {bytes_from_hex_string.decode("ascii")}\n')
+#    else:
+#        flog.write("version 17 mogg, revealed_key is not ASCII string\n")
+    grind_array_result = grind_array(magic_a, magic_b, bytes_from_hex_string, version, verbose, flog)
+    if verbose:
+        flog.write(f'grind_array_result: {grind_array_result.hex().upper()}\n')
+    actual_key = bytearray(16)
+    for i in range(0,15):
+        actual_key[i] = grind_array_result[i] ^ key_mask[i]
+    if verbose:
+        flog.write(f'actual_key: {actual_key.hex().upper()}\n')
+    return actual_key   
 
 def reveal_key(key, masher):
-    supershuffle(key)
-    mash(key, masher)
+    key = supershuffle(key)
+    key = mash(key, masher)
+    return key
 
 def supershuffle(key):
-    shuffle1(key)
-    shuffle2(key)
-    shuffle3(key)
-    shuffle4(key)
-    shuffle5(key)
-    shuffle6(key)
-    return
+    key = shuffle1(key)
+    key = shuffle2(key)
+    key = shuffle3(key)
+    key = shuffle4(key)
+    key = shuffle5(key)
+    key = shuffle6(key)
+    return key
 
 def shuffle1(key):
     for i in range(0,7):
@@ -154,39 +231,46 @@ def shuffle1(key):
         key[o],key[(i*4)+2] = key[(i*4)+2],key[o]
         o = roll((i*4)+3)
         key[o],key[(i*4)+1] = key[(i*4)+1],key[o]
+    return key
 
 def shuffle2(key):
     for i in range(0,7):
         key[((7-i)*4)+1],key[(i*4)+2] = key[(i*4)+2],key[((7-i)*4)+1]
         key[(7-i)*4],key[(i*4)+3] = key[(i*4)+3],key[(7-i)*4]
+    return key
 
 def shuffle3(key):
     for i in range(0,7):
         o = roll(((7-i)*4)+1)
         key[o],key[(i*4)+2] = key[(i*4)+2],key[o]
         key[(7-i)*4],key[(i*4)+3] = key[(i*4)+3],key[(7-i)*4]
+    return key
 
 def shuffle4(key):
     for i in range(0,7):
         key[((7-i)*4)+1],key[(i*4)+2]
         o = roll((7-i)*4)
         key[o],key[(i*4)+3]
+    return key
 
 def shuffle5(key):
     for i in range(0,7):
         o = roll((i*4)+2)
         key[((7-i)*4)+1],key[o] = key[o],key[((7-i)*4)+1]
         key[(7-i)*4],key[(i*4)+3] = key[(i*4)+3],key[(7-i)*4]
+    return key
 
 def shuffle6(key):
     for i in range(0,7):
         key[((7-i)*4)+1],key[(i*4)+2] = key[(i*4)+2],key[((7-i)*4)+1]
         o = roll((i*4)+3)
         key[(7-i)*4],key[o] = key[o],key[(7-i)*4]
+    return key
 
 def mash(key, masher):
     for i in range(0,31):
         key[i] = key[i] ^ masher[i]
+    return key
 
 def roll(x):
     return (x + 0x13) % 0x20
@@ -205,14 +289,14 @@ def hex_string_to_bytes(s):
     for i in range (0,15):
         lo = ascii_digit_to_hex(s[i*2+1])
         hi = ascii_digit_to_hex(s[i*2])
-        arr[i] = (lo + hi * 16)
+        arr[i] = (lo + hi * 16) & 0xff
     return arr
 
 def lcg(x):
     return (x * 0x19660d) + 0x3c63f35f
 
 def grind_array(magicA, magicB, key, version, verbose, flog):
-    return
+    return key
 
 def rotl(x, n):
     return ((x << (n & 31) | x >> (8 - n & 31)) & 255)
@@ -370,14 +454,19 @@ def o_funcs(a1, a2, op):
 def hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size, flog, verbose):
     magic_a = int.from_bytes(decmogg_data[20+hmx_header_size*8+16:20+hmx_header_size*8+20],"little")
     magic_b = int.from_bytes(decmogg_data[20+hmx_header_size*8+16+8:20+hmx_header_size*8+16+12],"little")
-    if verbose:
-        flog.write(f'magic_a: {magic_a:08X}\n')
-        flog.write(f'magic_b: {magic_b:08X}\n')
     magic_hash_a = lcg(lcg(magic_a ^ 0x5c5c5c5c)) & 0xffffffffffffffff
     magic_hash_b = lcg(magic_b ^ 0x36363636) & 0xffffffffffffffff
     if verbose:
+        flog.write(f'magic_a: {magic_a:08X}\n')
+        flog.write(f'magic_b: {magic_b:08X}\n')
         flog.write(f'magic_hash_a: {magic_hash_a:016X}\n')
         flog.write(f'magic_hash_b: {magic_hash_b:016X}\n')
+    mogg_hash_a = int.from_bytes(decmogg_data[12:16])
+    mogg_hash_b = int.from_bytes(decmogg_data[20:24])
+    mogg_unhash_a = to_bytes(mogg_hash_a ^ magic_hash_a)
+    mogg_unhash_b = to_bytes(mogg_hash_b ^ magic_hash_b)
+    decmogg_data[12:16] = mogg_unhash_a
+    decmogg_data[20:24] = mogg_unhash_b
     return
 
 def decrypt_mogg(xbox, fin, fout, flog, verbose):
@@ -389,6 +478,9 @@ def decrypt_mogg(xbox, fin, fout, flog, verbose):
     if verbose:
         flog.write(f'mogg version: {version}\n')
 
+    ogg_offset = int.from_bytes(mogg_data[4:8], "little")
+    hmx_header_size = int.from_bytes(mogg_data[16:20], "little")
+
     match version:
         case 11:
             key = ctrkey_11
@@ -398,37 +490,35 @@ def decrypt_mogg(xbox, fin, fout, flog, verbose):
             hvkey = hvkey_12
             if verbose:
                 flog.write(f'HvKey: {hvkey.hex().upper()}\n')
-            key = gen_key(xbox, hvkey, mogg_data, decmogg_data, 12, verbose, flog)
+            key = gen_key(xbox, hvkey, mogg_data, 12, verbose, flog)
         case 14:
             hvkey = hvkey_14
             if verbose:
                 flog.write(f'HvKey: {hvkey.hex().upper()}\n')
-            key = gen_key(xbox, hvkey, mogg_data, decmogg_data, 14, verbose, flog)
+            key = gen_key(xbox, hvkey, mogg_data, 14, verbose, flog)
         case 15:
             hvkey = hvkey_15
             if verbose:
                 flog.write(f'HvKey: {hvkey.hex().upper()}\n')
-            key = gen_key(xbox, hvkey, mogg_data, decmogg_data, 15, verbose, flog)
+            key = gen_key(xbox, hvkey, mogg_data, 15, verbose, flog)
         case 16:
             hvkey = hvkey_16
             if verbose:
                 flog.write(f'HvKey: {hvkey.hex().upper()}\n')
-            key = gen_key(xbox, hvkey, mogg_data, decmogg_data, 16, verbose, flog)
+            key = gen_key(xbox, hvkey, mogg_data, 16, verbose, flog)
         case 17:
             hvkey = hvkey_17
             if verbose:
                 flog.write(f'HvKey: {hvkey.hex().upper()}\n')
-            key = gen_key(xbox, hvkey, mogg_data, decmogg_data, 17, verbose, flog)
+            key = gen_key(xbox, hvkey, mogg_data, 17, verbose, flog)
 
-    ogg_offset = int.from_bytes(mogg_data[4:8], "little")
-    hmx_header_size = int.from_bytes(mogg_data[16:20], "little")
     if verbose:
         flog.write(f'ogg_offset: {ogg_offset}\n')
         flog.write(f'hmx_header_size: {hmx_header_size} ({hmx_header_size*8} bytes)\n')
    
-    decmogg_data[0:len(mogg_data)] = mogg_data[0:len(mogg_data)] #use this for now so there is data for later
+    #decmogg_data[0:len(mogg_data)] = mogg_data[0:len(mogg_data)] #use this for now so there is data for later
 
-    #decmogg_data[0:ogg_offset-1] = mogg_data[0:ogg_offset-1] #use this for when decryption is done enough
+    decmogg_data[0:ogg_offset] = mogg_data[0:ogg_offset] #use this for when decryption is done enough
 
     nonce_offset = 20 + hmx_header_size * 8
     nonce = bytearray(mogg_data[nonce_offset:nonce_offset+16])
@@ -439,14 +529,14 @@ def decrypt_mogg(xbox, fin, fout, flog, verbose):
     if verbose:
         flog.write(f'masher: {masher.hex().upper()}\n')
 
-    #do_crypt(key, mogg_data, decmogg_data, nonce, ogg_offset)
+    do_crypt(key, mogg_data, decmogg_data, nonce, ogg_offset, verbose, flog)
 
-    hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size, flog, verbose) #just here to test the routine itself
+#    hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size, flog, verbose) #just here to test the routine itself
 
     if decmogg_data[ogg_offset:ogg_offset+4] == bytearray(b'\x48\x4d\x58\x41'):
         hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size, flog, verbose)
     else:
-        print("decrypted mogg data did not start with HMXA (484D5841)")
+        print("decrypted Ogg data did not start with HMXA (484D5841)")
         if verbose:
             flog.write(f'first four bytes of ogg data: {decmogg_data[ogg_offset:ogg_offset+4].hex().upper()}\n')
         fout.close()

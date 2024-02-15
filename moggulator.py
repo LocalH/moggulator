@@ -1,4 +1,4 @@
-from pudb import set_trace; set_trace(paused=False)
+#from pudb import set_trace; set_trace(paused=False)
 
 import mogglib
 import getopt
