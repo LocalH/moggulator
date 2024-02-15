@@ -106,9 +106,9 @@ def do_crypt(key, mogg_data, decmogg_data, file_nonce, ogg_offset, verbose, flog
     block_offset = 0
     for i in range (ogg_offset, len(mogg_data)-ogg_offset):
         if block_offset == 16:
-            for j in range(0,15):
-                nonce[j] = (nonce[j]+1) & 0xff
-                if nonce[j] != 0:
+            for j in nonce:
+                j = (j+1) & 0xff
+                if j != 0:
                     break
             block_mask = cipher.decrypt(nonce)
             block_offset = 0
@@ -135,6 +135,7 @@ def gen_key(xbox, hvkey, mogg_data, version, verbose, flog):
         
 def gen_key_inner(xbox, hvkey, mogg_data, version, verbose, flog):
     key_mask = bytearray(16)
+    bad_mask = bytearray(b'\xc3\xc3\xc3\xc3\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b')
     hmx_header_size = int.from_bytes(mogg_data[16:20], "little")
     if xbox:
         key_mask[0:16] = mogg_data[20+hmx_header_size*8+16+32:20+hmx_header_size*8+16+48]
@@ -142,6 +143,11 @@ def gen_key_inner(xbox, hvkey, mogg_data, version, verbose, flog):
         key_mask[0:16] = mogg_data[20+hmx_header_size*8+16+16:20+hmx_header_size*8+16+32]
     if verbose:
         flog.write(f'key_mask: {key_mask.hex().upper()}\n')
+    if not xbox and version == 13 and key_mask == bad_mask:
+        print("found bad C3 PS3 key mask, correcting")
+        key_mask = bytearray(b'\xa5\xce\xfd\x06\x11\x93\x23\x21\xf8\x87\x85\xea\x95\xe4\x94\xd4')
+        if verbose:
+            flog.write(f'corrected key_mask: {key_mask.hex().upper()}\n')
     if xbox:
         mask_cipher = AES.new(hvkey, AES.MODE_ECB)
         key_mask = mask_cipher.decrypt(key_mask)
@@ -472,14 +478,22 @@ def hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size, flog, verbose):
 def decrypt_mogg(xbox, fin, fout, flog, verbose):
     failed = 0
     mogg_data = fin.read()
-    decmogg_data = bytearray(len(mogg_data))
+    decmogg_data = bytearray(mogg_data)
 
     version = mogg_data[0]
-    if verbose:
-        flog.write(f'mogg version: {version}\n')
-
     ogg_offset = int.from_bytes(mogg_data[4:8], "little")
     hmx_header_size = int.from_bytes(mogg_data[16:20], "little")
+
+    if verbose:
+        if version == 13:
+            flog.write("mogg version: 13 (new C3)\n")
+        elif version == 11:
+            if decmogg_data[20+hmx_header_size*8:20+hmx_header_size*8+16] == bytearray(b'\x00\x00\x00\x00\x63\x33\x2d\x63\x75\x73\x74\x6F\x6D\x73\x31\x34'):
+                flog.write("mogg version: 11 (old C3)\n")
+            else:
+                flog.write(f'mogg version: {version}\n')
+        else:
+            flog.write(f'mogg version: {version}\n')
 
     match version:
         case 11:
@@ -490,7 +504,7 @@ def decrypt_mogg(xbox, fin, fout, flog, verbose):
             hvkey = hvkey_12
             if verbose:
                 flog.write(f'HvKey: {hvkey.hex().upper()}\n')
-            key = gen_key(xbox, hvkey, mogg_data, 12, verbose, flog)
+            key = gen_key(xbox, hvkey, mogg_data, version, verbose, flog)
         case 14:
             hvkey = hvkey_14
             if verbose:
@@ -518,7 +532,13 @@ def decrypt_mogg(xbox, fin, fout, flog, verbose):
    
     #decmogg_data[0:len(mogg_data)] = mogg_data[0:len(mogg_data)] #use this for now so there is data for later
 
-    decmogg_data[0:ogg_offset] = mogg_data[0:ogg_offset] #use this for when decryption is done enough
+    #decmogg_data[0:ogg_offset] = mogg_data[0:ogg_offset] #use this for when decryption is done enough
+    
+    if version == 13 and decmogg_data[20+hmx_header_size*8+16+16:20+hmx_header_size*8+16+32] == bytearray(b'\xc3\xc3\xc3\xc3\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b'):
+#        print("found bad c3 ps3 key_mask, correcting")
+        decmogg_data[20+hmx_header_size*8+16+16:20+hmx_header_size*8+16+32] = bytearray(b'\xa5\xce\xfd\x06\x11\x93\x23\x21\xf8\x87\x85\xea\x95\xe4\x94\xd4')
+#        if verbose:
+#            flog.write(f'corrected ps3 key_mask: {bytearray(b'\xa5\xce\xfd\x06\x11\x93\x23\x21\xf8\x87\x85\xea\x95\xe4\x94\xd4').hex().upper()}\n')
 
     nonce_offset = 20 + hmx_header_size * 8
     nonce = bytearray(mogg_data[nonce_offset:nonce_offset+16])
