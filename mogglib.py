@@ -234,8 +234,115 @@ def gen_key_inner(xbox, hvkey, mogg_data, version, verbose, flog):
     return actual_key   
 
 def reveal_key(key, masher):
-    key = supershuffle(key)
+    for x in range(0,14):
+        key = supershuffle(key)
+    #key = quickshuffle(key)
     key = mash(key, masher)
+    return key
+
+def quickshuffle(key):
+    key[19],key[2] = key[2],key[19] # shuffle1
+    key[22],key[1] = key[1],key[22]
+    key[23],key[6] = key[6],key[23]
+    key[26],key[5] = key[5],key[26]
+    key[27],key[10] = key[10],key[27]
+    key[30],key[9] = key[9],key[30]
+    key[31],key[14] = key[14],key[31]
+    key[2],key[13] = key[13],key[2]
+    key[3],key[18] = key[18],key[3]
+    key[6],key[17] = key[17],key[6]
+    key[7],key[22] = key[22],key[7]
+    key[10],key[21] = key[21],key[10]
+    key[11],key[26] = key[26],key[11]
+    key[14],key[25] = key[25],key[14]
+    key[15],key[30] = key[30],key[15]
+    key[18],key[29] = key[29],key[18]
+    
+    key[29],key[2] = key[2],key[29] # shuffle2
+    key[28],key[3] = key[3],key[28]
+    key[25],key[6] = key[6],key[25]
+    key[24],key[7] = key[7],key[24]
+    key[21],key[10] = key[10],key[21]
+    key[20],key[11] = key[11],key[20]
+    key[17],key[14] = key[14],key[17]
+    key[16],key[15] = key[15],key[16]
+    key[13],key[18] = key[18],key[13]
+    key[12],key[19] = key[19],key[12]
+    key[9],key[22] = key[22],key[9]
+    key[8],key[23] = key[23],key[8]
+    key[5],key[26] = key[26],key[5]
+    key[4],key[27] = key[27],key[4]
+    key[1],key[30] = key[30],key[1]
+    key[0],key[31] = key[31],key[0]
+    
+    key[16],key[2] = key[2],key[16] # shuffle3
+    key[28],key[3] = key[3],key[28]
+    key[12],key[6] = key[6],key[12]
+    key[24],key[7] = key[7],key[24]
+    key[8],key[10] = key[10],key[8]
+    key[20],key[11] = key[11],key[20]
+    key[4],key[14] = key[14],key[4]
+    key[16],key[15] = key[15],key[16]
+    key[0],key[18] = key[18],key[0]
+    key[12],key[19] = key[19],key[12]
+    key[28],key[22] = key[22],key[28]
+    key[8],key[23] = key[23],key[8]
+    key[24],key[26] = key[26],key[24]
+    key[4],key[27] = key[27],key[4]
+    key[20],key[30] = key[30],key[20]
+    key[0],key[31] = key[31],key[0]
+    
+    key[29],key[2] = key[2],key[29] # shuffle4
+    key[15],key[3] = key[3],key[15]
+    key[25],key[6] = key[6],key[25]
+    key[11],key[7] = key[7],key[11]
+    key[21],key[10] = key[10],key[21]
+    key[7],key[11] = key[11],key[7]
+    key[17],key[14] = key[14],key[17]
+    key[3],key[15] = key[15],key[3]
+    key[13],key[18] = key[18],key[13]
+    key[31],key[19] = key[19],key[31]
+    key[9],key[22] = key[22],key[9]
+    key[27],key[23] = key[23],key[27]
+    key[5],key[26] = key[26],key[5]
+    key[23],key[27] = key[27],key[23]
+    key[1],key[30] = key[30],key[1]
+    key[19],key[31] = key[31],key[19]
+    
+    key[29],key[21] = key[21],key[29] # shuffle5
+    key[28],key[3] = key[3],key[28]
+    key[25],key[25] = key[25],key[25] # lol wut
+    key[24],key[7] = key[7],key[24]
+    key[21],key[29] = key[29],key[21]
+    key[20],key[11] = key[11],key[20]
+    key[17],key[1] = key[1],key[17]
+    key[16],key[15] = key[15],key[16]
+    key[13],key[5] = key[5],key[13]
+    key[12],key[19] = key[19],key[12]
+    key[9],key[9] = key[9],key[9] # lol wut again
+    key[8],key[23] = key[23],key[8]
+    key[5],key[13] = key[13],key[5]
+    key[4],key[27] = key[27],key[4]
+    key[1],key[17] = key[17],key[1]
+    key[0],key[31] = key[31],key[0]
+    
+    key[29],key[2] = key[2],key[29] # shuffle6
+    key[28],key[22] = key[22],key[28]
+    key[25],key[6] = key[6],key[25]
+    key[24],key[26] = key[26],key[24]
+    key[21],key[10] = key[10],key[21]
+    key[20],key[30] = key[30],key[20]
+    key[17],key[14] = key[14],key[17]
+    key[16],key[2] = key[2],key[16]
+    key[13],key[18] = key[18],key[13]
+    key[12],key[6] = key[6],key[12]
+    key[9],key[22] = key[22],key[9]
+    key[8],key[10] = key[10],key[8]
+    key[5],key[26] = key[26],key[5]
+    key[4],key[14] = key[14],key[4]
+    key[1],key[30] = key[30],key[1]
+    key[0],key[18] = key[18],key[0]
+    
     return key
 
 def supershuffle(key):
@@ -248,7 +355,7 @@ def supershuffle(key):
     return key
 
 def shuffle1(key):
-    for i in range(0,7):
+    for i in range(0,8):
         o = roll(i<<2)
         key[o],key[(i*4)+2] = key[(i*4)+2],key[o]
         o = roll((i*4)+3)
@@ -256,34 +363,34 @@ def shuffle1(key):
     return key
 
 def shuffle2(key):
-    for i in range(0,7):
+    for i in range(0,8):
         key[((7-i)*4)+1],key[(i*4)+2] = key[(i*4)+2],key[((7-i)*4)+1]
         key[(7-i)*4],key[(i*4)+3] = key[(i*4)+3],key[(7-i)*4]
     return key
 
 def shuffle3(key):
-    for i in range(0,7):
+    for i in range(0,8):
         o = roll(((7-i)*4)+1)
         key[o],key[(i*4)+2] = key[(i*4)+2],key[o]
         key[(7-i)*4],key[(i*4)+3] = key[(i*4)+3],key[(7-i)*4]
     return key
 
 def shuffle4(key):
-    for i in range(0,7):
-        key[((7-i)*4)+1],key[(i*4)+2]
+    for i in range(0,8):
+        key[((7-i)*4)+1],key[(i*4)+2]=key[(i*4)+2],key[((7-i)*4)+1]
         o = roll((7-i)*4)
-        key[o],key[(i*4)+3]
+        key[o],key[(i*4)+3]=key[(i*4)+3],key[o]
     return key
 
 def shuffle5(key):
-    for i in range(0,7):
+    for i in range(0,8):
         o = roll((i*4)+2)
         key[((7-i)*4)+1],key[o] = key[o],key[((7-i)*4)+1]
         key[(7-i)*4],key[(i*4)+3] = key[(i*4)+3],key[(7-i)*4]
     return key
 
 def shuffle6(key):
-    for i in range(0,7):
+    for i in range(0,8):
         key[((7-i)*4)+1],key[(i*4)+2] = key[(i*4)+2],key[((7-i)*4)+1]
         o = roll((i*4)+3)
         key[(7-i)*4],key[o] = key[o],key[(7-i)*4]
@@ -295,16 +402,28 @@ def mash(key, masher):
     return key
 
 def roll(x):
-    return (x + 0x13) % 0x20
+    return ((x + 0x13) % 0x20)
 
 def ascii_digit_to_hex(h):
     if h < 0x61 or 0x66 < h:
         if h < 0x41 or 0x46 < h:
-            return (h - 0x30)
+            h = h - 0x30
+            if h < 0:
+               h = h + 0x100
+               #h = int(bin(h & 0xff),2)
+            return h
         else:
-            return (h - 0x37)
+            h = h - 0x37
+            if h < 0:
+               h = h + 0x100
+               #h = int(bin(h & 0xff),2)
+            return h
     else:
-        return (h + 0xa9)
+        h = h - 0x57
+        if h < 0:
+            h = h + 0x100
+            #h = int(bin(h & 0xff),2)
+        return h
 
 def hex_string_to_bytes(s):
     arr = bytearray(16)
@@ -315,9 +434,49 @@ def hex_string_to_bytes(s):
     return arr
 
 def lcg(x):
-    return (x * 0x19660d) + 0x3c63f35f
+    return ((x * 0x19660d) + 0x3c6ef35f) & 0xffffffff
 
-def grind_array(magicA, magicB, key, version, verbose, flog):
+def grind_array(magic_a, magic_b, key, version, verbose, flog):
+    array = bytearray(64)
+    array1 = bytearray(64)
+    num1 = magic_a
+    num2 = magic_b
+    array2 = bytearray(256)
+    
+    for i in range (0, 256):
+        array2[i] = (magic_a & 0xff) >> 3
+        magic_a = lcg(magic_a)
+    if magic_b == 0:
+        magic_b = 0x303f
+    for i in range (0, 32):
+        while True:
+            magic_b = lcg(magic_b)
+            num = magic_b >> 2 & 0x1f
+            if array[num] == 0:
+                break
+        array1[i] = num & 0xff
+        array[num] = 1
+    array3 = array2
+    array4 = bytearray(256)
+    magic_a = num2
+    for i in range(0,256):
+        array4[i] = (magic_a & 0xff) >> 2 & 0x3f
+        magic_a = lcg(magic_a)
+    if version > 13:
+        for i in range(32, 64):
+            while True:
+                num1 = lcg(num1)
+                num = (num1 >> 2 & 0x1f) + 0x20
+                if array[num] == 0:
+                    break
+            array1[i] = num & 0xff
+            array[num] = 1
+        array3 = array4
+    for j in range(0,16):
+        num3 = key[j]
+        for k in range(0,16,2):
+            num3 = o_funcs(num3,key[k+1],array1[array3[key[k]]])
+        key[j] = num3 & 0xff
     return key
 
 def rotl(x, n):
@@ -481,17 +640,20 @@ def o_funcs(a1, a2, op):
 def hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size, flog, verbose):
     magic_a = int.from_bytes(decmogg_data[20+hmx_header_size*8+16:20+hmx_header_size*8+20],"little")
     magic_b = int.from_bytes(decmogg_data[20+hmx_header_size*8+16+8:20+hmx_header_size*8+16+12],"little")
-    magic_hash_a = lcg(lcg(magic_a ^ 0x5c5c5c5c)) & 0xffffffffffffffff
-    magic_hash_b = lcg(magic_b ^ 0x36363636) & 0xffffffffffffffff
+    magic_hash_a = lcg(lcg(magic_a ^ 0x5c5c5c5c)) & 0xffffffff
+    magic_hash_b = lcg(magic_b ^ 0x36363636) & 0xffffffff
     if verbose:
         flog.write(f'magic_a: {magic_a:08X}\n')
         flog.write(f'magic_b: {magic_b:08X}\n')
-        flog.write(f'magic_hash_a: {magic_hash_a:016X}\n')
-        flog.write(f'magic_hash_b: {magic_hash_b:016X}\n')
-    mogg_hash_a = int.from_bytes(decmogg_data[12:16])
-    mogg_hash_b = int.from_bytes(decmogg_data[20:24])
-    mogg_unhash_a = to_bytes(mogg_hash_a ^ magic_hash_a)
-    mogg_unhash_b = to_bytes(mogg_hash_b ^ magic_hash_b)
+        flog.write(f'magic_hash_a: {magic_hash_a:08X}\n')
+        flog.write(f'magic_hash_b: {magic_hash_b:08X}\n')
+    mogg_hash_a = decmogg_data[12:16]
+    mogg_hash_b = decmogg_data[20:24]
+    mogg_unhash_a = bytearray(4)
+    mogg_unhash_b = bytearray(4)
+    for i in range(0,3):
+       mogg_unhash_a[i] = mogg_hash_a[i] ^ bytearray(magic_hash_a.to_bytes(4,"big"))[i]
+       mogg_unhash_b[i] = mogg_hash_b[i] ^ bytearray(magic_hash_b.to_bytes(4,"big"))[i]
     decmogg_data[12:16] = mogg_unhash_a
     decmogg_data[20:24] = mogg_unhash_b
     return
@@ -515,6 +677,9 @@ def decrypt_mogg(xbox, fin, fout, flog, verbose):
                 flog.write(f'mogg version: {version}\n')
         else:
             flog.write(f'mogg version: {version}\n')
+
+    if verbose:
+        flog.write(f'masher: {masher.hex().upper()}\n')
 
     match version:
         case 11:
@@ -567,15 +732,13 @@ def decrypt_mogg(xbox, fin, fout, flog, verbose):
         flog.write(f'nonce_offset: {nonce_offset}\n')
         flog.write(f'nonce: {nonce.hex().upper()}\n')
     
-    if verbose:
-        flog.write(f'masher: {masher.hex().upper()}\n')
-
     do_crypt(key, mogg_data, decmogg_data, nonce, ogg_offset, verbose, flog)
 
-#    hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size, flog, verbose) #just here to test the routine itself
+    hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size, flog, verbose) #just here to test the routine itself
 
     if decmogg_data[ogg_offset:ogg_offset+4] == bytearray(b'\x48\x4d\x58\x41'):
-        hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size, flog, verbose)
+        shit=1
+#        hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size, flog, verbose)
     elif version != 11:
         print("decrypted Ogg data did not start with HMXA (484D5841)")
         if verbose:
