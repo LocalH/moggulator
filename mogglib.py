@@ -99,20 +99,34 @@ b'\xb5\xa2\x15\x9d\x15\x86\x9f\x6e\x80\x55\x8c\xe6\x6c\x68\x71\xee\x7e\xed\x19\x
 
 def do_crypt(key, mogg_data, decmogg_data, file_nonce, ogg_offset, verbose, flog):
     print(f'ogg stream size: {len(mogg_data)-ogg_offset} ({(len(mogg_data)-ogg_offset)/16} blocks)')
-    cipher = AES.new(key, AES.MODE_ECB)
+    cipher = AES.new(bytearray(key), AES.MODE_ECB)
     nonce = bytearray(len(file_nonce))
-    nonce[0:15] = file_nonce[0:15]
+    nonce[0:16] = file_nonce[0:16]
+#    if verbose:
+#        flog.write(f'do_crypt: nonce at start = {nonce.hex().upper()}\n')
     block_mask = cipher.decrypt(nonce)
+#    if verbose:
+#        flog.write(f'do_crypt: first decrypted block_mask = {block_mask.hex().upper()}\n')
     block_offset = 0
     for i in range (ogg_offset, len(mogg_data)-ogg_offset):
         if block_offset == 16:
-            for j in nonce:
-                j = (j+1) & 0xff
-                if j != 0:
+            idx1 = 0
+            for j in range(0, 15):
+                nonce_byte = nonce[idx1]
+                nonce_byte = (nonce_byte+1) & 0xff
+                nonce[idx1] = nonce_byte
+                if nonce[idx1] != 0:
+#                    if verbose:
+#                        flog.write(f'do_crypt: nonce[{idx1}] was not 0\n')
                     break
+                idx1 = idx1 + 1
             block_mask = cipher.decrypt(nonce)
+#            if verbose:
+#                flog.write(f'do_crypt: nonce = {nonce.hex().upper()}, block_mask = {block_mask.hex().upper()}\n')
             block_offset = 0
         decmogg_data[i] = mogg_data[i] ^ block_mask[block_offset]
+#        if verbose:
+#            flog.write(f'do_crypt: offset = {i}, mogg_data: {mogg_data[i].to_bytes().hex().upper()}, block_mask {block_mask[block_offset].to_bytes().hex().upper()}, decmogg_data {decmogg_data[i].to_bytes().hex().upper()}\n')
         block_offset = block_offset + 1
     return
 
@@ -202,6 +216,8 @@ def gen_key_inner(xbox, hvkey, mogg_data, version, verbose, flog):
     if verbose:
         flog.write(f'revealed_key: {revealed_key.hex().upper()}\n')
     bytes_from_hex_string = hex_string_to_bytes(revealed_key)
+    if verbose:
+        flog.write(f'bytes_from_hex_string: {bytes_from_hex_string.hex().upper()}\n')
 #    if version < 17:
 #        if verbose:
 #            flog.write(f'revealed_key char: {bytes_from_hex_string.decode("ascii")}\n')
@@ -211,7 +227,7 @@ def gen_key_inner(xbox, hvkey, mogg_data, version, verbose, flog):
     if verbose:
         flog.write(f'grind_array_result: {grind_array_result.hex().upper()}\n')
     actual_key = bytearray(16)
-    for i in range(0,15):
+    for i in range(0,16):
         actual_key[i] = grind_array_result[i] ^ key_mask[i]
     if verbose:
         flog.write(f'actual_key: {actual_key.hex().upper()}\n')
@@ -274,7 +290,7 @@ def shuffle6(key):
     return key
 
 def mash(key, masher):
-    for i in range(0,31):
+    for i in range(0,32):
         key[i] = key[i] ^ masher[i]
     return key
 
@@ -292,7 +308,7 @@ def ascii_digit_to_hex(h):
 
 def hex_string_to_bytes(s):
     arr = bytearray(16)
-    for i in range (0,15):
+    for i in range (0,16):
         lo = ascii_digit_to_hex(s[i*2+1])
         hi = ascii_digit_to_hex(s[i*2])
         arr[i] = (lo + hi * 16) & 0xff
@@ -316,9 +332,12 @@ def onot(x):
     else:
         return 0
 
+def bit_not(num):
+    return num ^ ((1 << num.bit_length()) - 1)
+
 def o_funcs(a1, a2, op):
-    a1 = int.a1
-    a2 = int.a2
+#    a1 = int(a1)
+#    a2 = int(a2)
     match op:
         case 0:   # original 32 O funcs from v12
             ret = a2 + rotr(a1, onot(a2))
@@ -347,7 +366,7 @@ def o_funcs(a1, a2, op):
         case 12:
             ret = a1 ^ a2
         case 13:
-            ret = a2 ^ onot(A1)
+            ret = a2 ^ onot(a1)
         case 14:
             ret = a2 ^ (a2 + rotr(a1, 3))
         case 15:
@@ -383,7 +402,9 @@ def o_funcs(a1, a2, op):
         case 27:
             ret = a2 ^ rotr(a1, 1)
         case 28:
-            ret = o_funcs(not(a1), a2, 24)
+            ret = o_funcs((~a1)&0xff,a2,24)
+#            a1 = ~a1
+#            ret = a1 >> (a2 & 7 & 31) | a1 << (-a2 & 7 & 31)
         case 29:
             ret = a2 ^ rotr(a1, 2)
         case 30:
@@ -392,7 +413,7 @@ def o_funcs(a1, a2, op):
             ret = a2 ^ rotl(a1, 1)
 
         case 32: # additional 32 O funcs added in v14, much nastier looking
-            ret = ((a1 << 0x08 | 0xaa | a1 ^ 0xff) >> 4)
+            ret = ((a1 << 0x08 | 0xaa | a1 ^ 0xff) >> 4) ^ a2
         case 33:
             ret = (a1 ^ 0xff | a1 << 8) >> 3 ^ a2
         case 34:
@@ -408,15 +429,15 @@ def o_funcs(a1, a2, op):
         case 39:
             ret = (a1 ^ 0x5c | a1 << 8 | 0x36) >> 1 ^ a2
         case 40:
-            ret = (a1 ^ 0xff | a1 << 8) >> 4 ^ a2
+            ret = (a1 ^ 0xff | a1 << 8) >> 5 ^ a2
         case 41:
-            ret = (not(a1) << 8 | a1) >> 6 ^ a2
+            ret = (~a1 << 8 | a1) >> 6 ^ a2
         case 42:
             ret = (a1 ^ 0x5c | a1 << 8) >> 3 ^ a2
         case 43:
             ret = (a1 ^ 0x3c | 0x65 | a1 << 8) >> 5 ^ a2
         case 44:
-            ret = (a1 ^ 0x36 | a1 << 8) >> 3 ^ a2
+            ret = (a1 ^ 0x36 | a1 << 8) >> 1 ^ a2
         case 45:
             ret = (a1 ^ 0x65 | a1 << 8 | 0x3c) >> 6 ^ a2
         case 46:
@@ -455,7 +476,7 @@ def o_funcs(a1, a2, op):
             ret = (a1 ^ 0xff | a1 << 8 | 0xaf) >> 6 ^ a2
         case 63:
             ret = (a1 ^ 0xff | a1 << 8) >> 2 ^ a2
-    return ret
+    return (ret & 0xff)
 
 def hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size, flog, verbose):
     magic_a = int.from_bytes(decmogg_data[20+hmx_header_size*8+16:20+hmx_header_size*8+20],"little")
@@ -555,15 +576,13 @@ def decrypt_mogg(xbox, fin, fout, flog, verbose):
 
     if decmogg_data[ogg_offset:ogg_offset+4] == bytearray(b'\x48\x4d\x58\x41'):
         hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size, flog, verbose)
-    else:
+    elif version != 11:
         print("decrypted Ogg data did not start with HMXA (484D5841)")
         if verbose:
             flog.write(f'first four bytes of ogg data: {decmogg_data[ogg_offset:ogg_offset+4].hex().upper()}\n')
-        fout.close()
-        failed = 1
 
     if decmogg_data[ogg_offset:ogg_offset+4] != bytearray(b'\x4f\x67\x67\x53'):
-        print("failed HMXA to OggS")
+        print("failed decryption")
         fout.close()
         failed = 1
 
