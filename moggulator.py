@@ -13,12 +13,13 @@ def usage():
     print("   -i <input> / --input=<input> : read mogg from <input>")
     print("   -o <output> / --output=<output> : write mogg to <output>")
     print("   -p / --ps3: use ps3 key to decrypt")
+    print("   -r / --red: use red HvKeys")
     print("   -v / --verbose: verbose output to stderr\n")
-    print("Default action is to decrypt with Xbox keys. Encryption coming in the future.")
+    print("Default action is to decrypt with green Xbox keys. Encryption coming in the future.")
 
 def main():
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hei:o:vp", ["help", "encrypt", "input=", "output=", "verbose", "ps3"])
+        opts, args = getopt.getopt(sys.argv[1:], "hei:o:vpr", ["help", "encrypt", "input=", "output=", "verbose", "ps3", "red"])
     except getopt.GetoptError as err:
         print(err)
         usage()
@@ -29,6 +30,7 @@ def main():
     encrypt = False
     verbose = False
     xbox = True
+    red = False
     infile = ""
     outfile = ""
     logfile = ""
@@ -63,6 +65,8 @@ def main():
                 sys.exit(2)
         elif o in ("-p", "--ps3"):
             xbox = False
+        elif o in ("-r", "--red"):
+            red = True
         else:
             assert False, "unhandled option"
    
@@ -81,7 +85,7 @@ def main():
     else:
         print("using ps3 keys for decryption")
 
-    ret = mogglib.crypt_mogg(xbox, fin, fout, flog, verbose)
+    ret = mogglib.crypt_mogg(xbox, red, fin, fout, flog, verbose)
 
     if ret:
         print("decryption failed, removing output file")

@@ -1,5 +1,3 @@
-#from pudb import set_trace; set_trace(paused=False)
-
 from Crypto.Cipher import AES
 import getopt
 import sys
@@ -12,6 +10,11 @@ hvkey_14 = b'\x51\x73\xad\xe5\xb3\x99\xb8\x61\x58\x1a\xf9\xb8\x1e\xa7\xbe\xbf'
 hvkey_15 = b'\xc6\x22\x94\x30\xd8\x3c\x84\x14\x08\x73\x7c\xf2\x23\xf6\xeb\x5a'
 hvkey_16 = b'\x02\x1a\x83\xf3\x97\xe9\xd4\xb8\x06\x74\x14\x6b\x30\x4c\x00\x91'
 hvkey_17 = b'\x42\x66\x37\xb3\x68\x05\x9f\x85\x6e\x96\xbd\x1e\xf9\x0e\x7f\xbd'
+hvkey_12_r = b'\xf7\xb6\xc2\x22\xb6\x66\x5b\xd5\x6c\xe0\x7d\x6c\x8a\x46\xdb\x18'
+hvkey_14_r = b'\x60\xad\x83\x0b\xc2\x2f\x82\xc5\xcb\xbf\xf4\x3d\x60\x52\x7e\x33'
+hvkey_15_r = b'\x6c\x68\x55\x98\x5b\x12\x21\x41\xe7\x85\x35\xca\x19\xe1\x9a\xf3'
+hvkey_16_r = b'\xa4\x2f\xf3\xe4\xe8\xfb\xa5\x9e\xac\x79\x01\x9e\xd5\x89\x66\xec'
+hvkey_17_r = b'\x0b\x9c\x96\xce\xb6\xf0\xbc\xde\x4e\x9c\xd1\xc4\x1d\xeb\x7f\xe6'
 hidden_keys = [
 b'\x7f\x95\x5b\x9d\x94\xba\x12\xf1\xd7\x5a\x67\xd9\x16\x45\x28\xdd\x61\x55\x55\xaf\x23\x91\xd6\x0a\x3a\x42\x81\x18\xb4\xf7\xf3\x04',
 b'\x78\x96\x5d\x92\x92\xb0\x47\xac\x8f\x5b\x6d\xdc\x1c\x41\x7e\xda\x6a\x55\x53\xaf\x20\xc8\xdc\x0a\x66\x43\xdd\x1c\xb2\xa5\xa4\x0c',
@@ -102,27 +105,17 @@ def do_crypt(key, mogg_data, decmogg_data, file_nonce, ogg_offset, verbose, flog
     cipher = AES.new(key, AES.MODE_ECB)
     nonce = bytearray(16)
     nonce[0:16] = file_nonce[0:16]
-#    if verbose:
-#        flog.write(f'do_crypt: key = {key.hex().upper()}\n')
     block_mask = bytearray(cipher.encrypt(nonce))
-#    if verbose:
-#        flog.write(f'do_crypt: nonce = {nonce.hex().upper()}, block_mask = {block_mask.hex().upper()}\n')
     block_offset = 0
     for i in range (ogg_offset, len(mogg_data)):
         if block_offset == 16:
             for j in range(0,16):
                 nonce[j] = (nonce[j]+1) & 0xff
                 if not nonce[j] == 0:
-#                    if verbose:
-#                        flog.write(f'do_crypt: nonce[{j}] was not 0\n')
                     break
             block_mask = bytearray(cipher.encrypt(nonce))
-#            if verbose:
-#                flog.write(f'do_crypt: nonce = {nonce.hex().upper()}, block_mask = {block_mask.hex().upper()}\n')
             block_offset = 0
         decmogg_data[i] = (mogg_data[i] ^ block_mask[block_offset]) & 0xff
-#        if verbose:
-#            flog.write(f'do_crypt: offset = {i}, mogg_data: {mogg_data[i].to_bytes().hex().upper()}, block_mask: {block_mask[block_offset].to_bytes().hex().upper()}, decmogg_data: {decmogg_data[i].to_bytes().hex().upper()}\n')
         block_offset = block_offset + 1
     return
 
@@ -184,6 +177,7 @@ def gen_key_inner(xbox, hvkey, mogg_data, version, verbose, flog):
                 v17_game = "FUSER"
             case _:
                 print("Unknown game! Please notify LocalH and send him the mogg that gave you this message.")
+                sys.exit(2)
         if verbose:
             flog.write(f'use_new_hidden_keys: {use_new_hidden_keys} ({v17_game})\n')
     key_index = int.from_bytes(mogg_data[hdr_offset:hdr_offset+8], "little") % 6
@@ -214,11 +208,6 @@ def gen_key_inner(xbox, hvkey, mogg_data, version, verbose, flog):
     bytes_from_hex_string = hex_string_to_bytes(revealed_key)
     if verbose:
         flog.write(f'bytes_from_hex_string: {bytes_from_hex_string.hex().upper()}\n')
-#    if version < 17:
-#        if verbose:
-#            flog.write(f'revealed_key char: {bytes_from_hex_string.decode("ascii")}\n')
-#    else:
-#        flog.write("version 17 mogg, revealed_key is not ASCII string\n")
     grind_array_result = grind_array(magic_a, magic_b, bytes_from_hex_string, version, verbose, flog)
     if verbose:
         flog.write(f'grind_array_result: {grind_array_result.hex().upper()}\n')
@@ -232,7 +221,7 @@ def gen_key_inner(xbox, hvkey, mogg_data, version, verbose, flog):
 def reveal_key(key, masher):
     for x in range(0,14):
         key = supershuffle(key)
-    #key = quickshuffle(key)
+        #key = quickshuffle(key)
     key = mash(key, masher)
     return key
 
@@ -406,19 +395,16 @@ def ascii_digit_to_hex(h):
             h = h - 0x30
             if h < 0:
                h = h + 0x100
-               #h = int(bin(h & 0xff),2)
             return h
         else:
             h = h - 0x37
             if h < 0:
                h = h + 0x100
-               #h = int(bin(h & 0xff),2)
             return h
     else:
         h = h - 0x57
         if h < 0:
             h = h + 0x100
-            #h = int(bin(h & 0xff),2)
         return h
 
 def hex_string_to_bytes(s):
@@ -491,8 +477,6 @@ def bit_not(num):
     return num ^ ((1 << num.bit_length()) - 1)
 
 def o_funcs(a1, a2, op):
-#    a1 = int(a1)
-#    a2 = int(a2)
     match op:
         case 0:   # original 32 O funcs from v12
             ret = a2 + rotr(a1, onot(a2))
@@ -558,8 +542,6 @@ def o_funcs(a1, a2, op):
             ret = a2 ^ rotr(a1, 1)
         case 28:
             ret = o_funcs((~a1)&0xff,a2,24)
-#            a1 = ~a1
-#            ret = a1 >> (a2 & 7 & 31) | a1 << (-a2 & 7 & 31)
         case 29:
             ret = a2 ^ rotr(a1, 2)
         case 30:
@@ -657,14 +639,19 @@ def hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size, flog, verbose):
     decmogg_data[ogg_offset:ogg_offset+4] = bytearray(b'\x4f\x67\x67\x53')
     return
 
-def crypt_mogg(xbox, fin, fout, flog, verbose):
-    failed = 0
+def crypt_mogg(xbox, red, fin, fout, flog, verbose):
+    failed = False
     mogg_data = fin.read()
     decmogg_data = bytearray(mogg_data)
 
     version = mogg_data[0]
     ogg_offset = int.from_bytes(mogg_data[4:8], "little")
     hmx_header_size = int.from_bytes(mogg_data[16:20], "little")
+
+    if version == 10:
+        print("version 10 mogg, nothing to do")
+        fout.close()
+        return True
 
     if verbose:
         if version == 13:
@@ -680,50 +667,66 @@ def crypt_mogg(xbox, fin, fout, flog, verbose):
     if verbose:
         flog.write(f'masher: {masher.hex().upper()}\n')
 
+    if red:
+        print("using red keys")
+
     match version:
         case 11:
             key = bytearray(ctrkey_11)
             if verbose:
                 flog.write(f'AES key: {key.hex().upper()}\n')
         case 12 | 13:
-            hvkey = hvkey_12
+            if red:
+                hvkey = hvkey_12_r
+            else:
+                hvkey = hvkey_12
             if verbose:
                 flog.write(f'HvKey: {hvkey.hex().upper()}\n')
             key = gen_key(xbox, hvkey, mogg_data, version, verbose, flog)
         case 14:
-            hvkey = hvkey_14
+            if red:
+                hvkey = hvkey_14_r
+            else:
+                hvkey = hvkey_14
             if verbose:
                 flog.write(f'HvKey: {hvkey.hex().upper()}\n')
             key = gen_key(xbox, hvkey, mogg_data, 14, verbose, flog)
         case 15:
-            hvkey = hvkey_15
+            if red:
+                hvkey = hvkey_15_r
+            else:
+                hvkey = hvkey_15
             if verbose:
                 flog.write(f'HvKey: {hvkey.hex().upper()}\n')
             key = gen_key(xbox, hvkey, mogg_data, 15, verbose, flog)
         case 16:
-            hvkey = hvkey_16
+            if red:
+                hvkey = hvkey_16_r
+            else:
+                hvkey = hvkey_16
             if verbose:
                 flog.write(f'HvKey: {hvkey.hex().upper()}\n')
             key = gen_key(xbox, hvkey, mogg_data, 16, verbose, flog)
         case 17:
-            hvkey = hvkey_17
+            if red:
+                hvkey = hvkey_17_r
+            else:
+                hvkey = hvkey_17
             if verbose:
                 flog.write(f'HvKey: {hvkey.hex().upper()}\n')
             key = gen_key(xbox, hvkey, mogg_data, 17, verbose, flog)
+        case _:
+            print("Unknown encryption version! Please notify LocalH and send him the mogg that gave you this message.")
+            sys.exit(2)
 
     if verbose:
         flog.write(f'ogg_offset: {ogg_offset}\n')
         flog.write(f'hmx_header_size: {hmx_header_size} ({hmx_header_size*8} bytes)\n')
    
-    decmogg_data = bytearray(mogg_data) #use this for now so there is data for later
-
-#    decmogg_data[0:ogg_offset] = mogg_data[0:ogg_offset] #use this for when decryption is done enough
+    decmogg_data[0:ogg_offset] = mogg_data[0:ogg_offset] # copy header to output buffer
     
     if version == 13 and decmogg_data[20+hmx_header_size*8+16+16:20+hmx_header_size*8+16+32] == bytearray(b'\xc3\xc3\xc3\xc3\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b'):
-#        print("found bad c3 ps3 key_mask, correcting")
         decmogg_data[20+hmx_header_size*8+16+16:20+hmx_header_size*8+16+32] = bytearray(b'\xa5\xce\xfd\x06\x11\x93\x23\x21\xf8\x87\x85\xea\x95\xe4\x94\xd4')
-#        if verbose:
-#            flog.write(f'corrected ps3 key_mask: {bytearray(b'\xa5\xce\xfd\x06\x11\x93\x23\x21\xf8\x87\x85\xea\x95\xe4\x94\xd4').hex().upper()}\n')
 
     nonce_offset = 20 + hmx_header_size * 8
     nonce = bytearray(mogg_data[nonce_offset:nonce_offset+16])
@@ -732,8 +735,6 @@ def crypt_mogg(xbox, fin, fout, flog, verbose):
         flog.write(f'nonce: {nonce.hex().upper()}\n')
     
     do_crypt(key, mogg_data, decmogg_data, nonce, ogg_offset, verbose, flog)
-
-#    hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size, flog, verbose) #just here to test the routine itself
 
     if decmogg_data[ogg_offset:ogg_offset+4] == bytearray(b'\x48\x4d\x58\x41'):
         hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size, flog, verbose)
@@ -745,7 +746,7 @@ def crypt_mogg(xbox, fin, fout, flog, verbose):
     if not decmogg_data[ogg_offset:ogg_offset+4] == bytearray(b'\x4f\x67\x67\x53'):
         print("OggS header not present")
         fout.close()
-        failed = 1
+        failed = True
     else:
         decmogg_data[0] = 10
         if verbose:

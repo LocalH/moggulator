@@ -1,2 +1,6 @@
 # moggulator
-A Python port of a cool mogg tool
+a Python port of a cool mogg tool
+
+`moggulator -i <input> -o <output> [-p] [-r] [-v]`
+
+`moggulator --input <input> --output <output> [--ps3] [--red] [--verbose]`
