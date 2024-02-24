@@ -22,7 +22,7 @@ def main():
         usage()
         sys.exit(2)
     launched = os.path.relpath(sys.argv[0])
-    print(f'{launched} v0.1\n')
+    print(f'{launched} v1.0\n')
     no_opts = True
     encrypt = False
     verbose = False
