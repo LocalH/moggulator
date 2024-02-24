@@ -99,34 +99,30 @@ b'\xb5\xa2\x15\x9d\x15\x86\x9f\x6e\x80\x55\x8c\xe6\x6c\x68\x71\xee\x7e\xed\x19\x
 
 def do_crypt(key, mogg_data, decmogg_data, file_nonce, ogg_offset, verbose, flog):
     print(f'ogg stream size: {len(mogg_data)-ogg_offset} ({(len(mogg_data)-ogg_offset)/16} blocks)')
-    cipher = AES.new(bytearray(key), AES.MODE_ECB)
-    nonce = bytearray(len(file_nonce))
+    cipher = AES.new(key, AES.MODE_ECB)
+    nonce = bytearray(16)
     nonce[0:16] = file_nonce[0:16]
 #    if verbose:
-#        flog.write(f'do_crypt: nonce at start = {nonce.hex().upper()}\n')
-    block_mask = cipher.decrypt(nonce)
+#        flog.write(f'do_crypt: key = {key.hex().upper()}\n')
+    block_mask = bytearray(cipher.encrypt(nonce))
 #    if verbose:
-#        flog.write(f'do_crypt: first decrypted block_mask = {block_mask.hex().upper()}\n')
+#        flog.write(f'do_crypt: nonce = {nonce.hex().upper()}, block_mask = {block_mask.hex().upper()}\n')
     block_offset = 0
-    for i in range (ogg_offset, len(mogg_data)-ogg_offset):
+    for i in range (ogg_offset, len(mogg_data)):
         if block_offset == 16:
-            idx1 = 0
-            for j in range(0, 15):
-                nonce_byte = nonce[idx1]
-                nonce_byte = (nonce_byte+1) & 0xff
-                nonce[idx1] = nonce_byte
-                if nonce[idx1] != 0:
+            for j in range(0,16):
+                nonce[j] = (nonce[j]+1) & 0xff
+                if not nonce[j] == 0:
 #                    if verbose:
-#                        flog.write(f'do_crypt: nonce[{idx1}] was not 0\n')
+#                        flog.write(f'do_crypt: nonce[{j}] was not 0\n')
                     break
-                idx1 = idx1 + 1
-            block_mask = cipher.decrypt(nonce)
+            block_mask = bytearray(cipher.encrypt(nonce))
 #            if verbose:
 #                flog.write(f'do_crypt: nonce = {nonce.hex().upper()}, block_mask = {block_mask.hex().upper()}\n')
             block_offset = 0
-        decmogg_data[i] = mogg_data[i] ^ block_mask[block_offset]
+        decmogg_data[i] = (mogg_data[i] ^ block_mask[block_offset]) & 0xff
 #        if verbose:
-#            flog.write(f'do_crypt: offset = {i}, mogg_data: {mogg_data[i].to_bytes().hex().upper()}, block_mask {block_mask[block_offset].to_bytes().hex().upper()}, decmogg_data {decmogg_data[i].to_bytes().hex().upper()}\n')
+#            flog.write(f'do_crypt: offset = {i}, mogg_data: {mogg_data[i].to_bytes().hex().upper()}, block_mask: {block_mask[block_offset].to_bytes().hex().upper()}, decmogg_data: {decmogg_data[i].to_bytes().hex().upper()}\n')
         block_offset = block_offset + 1
     return
 
@@ -642,23 +638,26 @@ def hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size, flog, verbose):
     magic_b = int.from_bytes(decmogg_data[20+hmx_header_size*8+16+8:20+hmx_header_size*8+16+12],"little")
     magic_hash_a = lcg(lcg(magic_a ^ 0x5c5c5c5c)) & 0xffffffff
     magic_hash_b = lcg(magic_b ^ 0x36363636) & 0xffffffff
+    magic_hash_a_bytes = bytearray(magic_hash_a.to_bytes(4, "big"))
+    magic_hash_b_bytes = bytearray(magic_hash_b.to_bytes(4, "big"))
     if verbose:
         flog.write(f'magic_a: {magic_a:08X}\n')
         flog.write(f'magic_b: {magic_b:08X}\n')
         flog.write(f'magic_hash_a: {magic_hash_a:08X}\n')
         flog.write(f'magic_hash_b: {magic_hash_b:08X}\n')
-    mogg_hash_a = decmogg_data[12:16]
-    mogg_hash_b = decmogg_data[20:24]
+    mogg_hash_a = decmogg_data[ogg_offset+12:ogg_offset+16]
+    mogg_hash_b = decmogg_data[ogg_offset+20:ogg_offset+24]
     mogg_unhash_a = bytearray(4)
     mogg_unhash_b = bytearray(4)
-    for i in range(0,3):
-       mogg_unhash_a[i] = mogg_hash_a[i] ^ bytearray(magic_hash_a.to_bytes(4,"big"))[i]
-       mogg_unhash_b[i] = mogg_hash_b[i] ^ bytearray(magic_hash_b.to_bytes(4,"big"))[i]
-    decmogg_data[12:16] = mogg_unhash_a
-    decmogg_data[20:24] = mogg_unhash_b
+    for i in range(0,4):
+       mogg_unhash_a[i] = mogg_hash_a[i] ^ magic_hash_a_bytes[i]
+       mogg_unhash_b[i] = mogg_hash_b[i] ^ magic_hash_b_bytes[i]
+    decmogg_data[ogg_offset+12:ogg_offset+16] = mogg_unhash_a[0:4]
+    decmogg_data[ogg_offset+20:ogg_offset+24] = mogg_unhash_b[0:4]
+    decmogg_data[ogg_offset:ogg_offset+4] = bytearray(b'\x4f\x67\x67\x53')
     return
 
-def decrypt_mogg(xbox, fin, fout, flog, verbose):
+def crypt_mogg(xbox, fin, fout, flog, verbose):
     failed = 0
     mogg_data = fin.read()
     decmogg_data = bytearray(mogg_data)
@@ -683,7 +682,7 @@ def decrypt_mogg(xbox, fin, fout, flog, verbose):
 
     match version:
         case 11:
-            key = ctrkey_11
+            key = bytearray(ctrkey_11)
             if verbose:
                 flog.write(f'AES key: {key.hex().upper()}\n')
         case 12 | 13:
@@ -716,9 +715,9 @@ def decrypt_mogg(xbox, fin, fout, flog, verbose):
         flog.write(f'ogg_offset: {ogg_offset}\n')
         flog.write(f'hmx_header_size: {hmx_header_size} ({hmx_header_size*8} bytes)\n')
    
-    #decmogg_data[0:len(mogg_data)] = mogg_data[0:len(mogg_data)] #use this for now so there is data for later
+    decmogg_data = bytearray(mogg_data) #use this for now so there is data for later
 
-    #decmogg_data[0:ogg_offset] = mogg_data[0:ogg_offset] #use this for when decryption is done enough
+#    decmogg_data[0:ogg_offset] = mogg_data[0:ogg_offset] #use this for when decryption is done enough
     
     if version == 13 and decmogg_data[20+hmx_header_size*8+16+16:20+hmx_header_size*8+16+32] == bytearray(b'\xc3\xc3\xc3\xc3\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b'):
 #        print("found bad c3 ps3 key_mask, correcting")
@@ -734,24 +733,23 @@ def decrypt_mogg(xbox, fin, fout, flog, verbose):
     
     do_crypt(key, mogg_data, decmogg_data, nonce, ogg_offset, verbose, flog)
 
-    hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size, flog, verbose) #just here to test the routine itself
+#    hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size, flog, verbose) #just here to test the routine itself
 
     if decmogg_data[ogg_offset:ogg_offset+4] == bytearray(b'\x48\x4d\x58\x41'):
-        shit=1
-#        hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size, flog, verbose)
+        hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size, flog, verbose)
     elif version != 11:
         print("decrypted Ogg data did not start with HMXA (484D5841)")
         if verbose:
             flog.write(f'first four bytes of ogg data: {decmogg_data[ogg_offset:ogg_offset+4].hex().upper()}\n')
 
-    if decmogg_data[ogg_offset:ogg_offset+4] != bytearray(b'\x4f\x67\x67\x53'):
-        print("failed decryption")
+    if not decmogg_data[ogg_offset:ogg_offset+4] == bytearray(b'\x4f\x67\x67\x53'):
+        print("OggS header not present")
         fout.close()
         failed = 1
-
-    decmogg_data[0] = 10
-    if verbose:
-        flog.write("wrote version 10 to mogg header\n")
+    else:
+        decmogg_data[0] = 10
+        if verbose:
+            flog.write("wrote version 10 to mogg header\n")
 
     if not failed:
         fout.write(decmogg_data)

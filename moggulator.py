@@ -82,7 +82,7 @@ def main():
     else:
         print("using ps3 keys for decryption")
 
-    ret = mogglib.decrypt_mogg(xbox, fin, fout, flog, verbose)
+    ret = mogglib.crypt_mogg(xbox, fin, fout, flog, verbose)
 
     if ret:
         print("decryption failed, removing output file")
