@@ -666,6 +666,8 @@ def crypt_mogg(xbox, red, fin, fout, flog, verbose):
 
     if red:
         print("using red keys")
+    else:
+        print("using green keys")
 
     match version:
         case 11:
