@@ -84,7 +84,22 @@ def main():
 
     ret = mogglib.crypt_mogg(xbox, red, fin, fout, flog, verbose)
 
-    if ret:
+    fin.seek(0)
+    ver = int.from_bytes(fin.read(4), "little")
+
+    if ver != 10:
+        if ret:
+            if not red:
+                print("decryption with green keys failed, trying red keys")
+                fin.seek(0)
+                fout = open(outfile, 'wb')
+                ret_r = mogglib.crypt_mogg(xbox, True, fin, fout, flog, verbose)
+                if ret_r:
+                    print("decryption with red keys failed, removing output file")
+                    os.remove(outfile)
+                else:
+                    print("Please notify LocalH of this red key mogg and send a copy of the song package.")
+    else:
         print("decryption failed, removing output file")
         os.remove(outfile)
 
