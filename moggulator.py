@@ -1,12 +1,9 @@
-#from pudb import set_trace; set_trace(paused=False)
-
 import mogglib
 import getopt
 import sys
 import os
 
 def usage():
-    #print(f'usage: {sys.argv[0]} [-h] [-e] [-i <input>] [-o <output>] [-v]')
     print(f'usage: {os.path.relpath(sys.argv[0])} [-h] -i <input> -o <output> [-p] [-v]')
     print("   -h / --help : print usage")
     #print("   -e / --encrypt: encrypt mogg")
