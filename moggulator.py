@@ -154,7 +154,7 @@ def main():
                     print("decryption with green keys failed, trying red keys")
                     fin.seek(0)
                     fout = open(outfile, 'wb')
-                    ret_r = mogglib.crypt_mogg(xbox, True, fin, fout, flog, verbose)
+                    ret_r = mogglib.decrypt_mogg(xbox, True, fin, fout, flog, verbose)
                     if ret_r:
                         print("decryption with red keys failed, removing output file")
                         os.remove(outfile)
