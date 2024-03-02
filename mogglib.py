@@ -1,6 +1,6 @@
 from Crypto.Cipher import AES
 import sys
-import os
+#import os
 
 masher = b'\x39\xa2\xbf\x53\x7d\x88\x1d\x03\x35\x38\xa3\x80\x45\x24\xee\xca\x25\x6d\xa5\xc2\x65\xa9\x94\x73\xe5\x74\xeb\x54\xe5\x95\x3f\x1c'
 ctrkey_11 = b'\x37\xb2\xe2\xb9\x1c\x74\xfa\x9e\x38\x81\x08\xea\x36\x23\xdb\xe4'
@@ -158,8 +158,8 @@ def gen_key_inner(xbox, hvkey, mogg_data, version, verbose, flog):
             flog.write(f'decrypted key_mask: {key_mask.hex().upper()}\n')
     magic_a = int.from_bytes(mogg_data[20+hmx_header_size*8+16:20+hmx_header_size*8+16+4], "little")
     magic_b = int.from_bytes(mogg_data[20+hmx_header_size*8+16+8:20+hmx_header_size*8+16+12], "little")
-    magic_hash_a = lcg(lcg(magic_a ^ 0x5c5c5c5c)) & 0xffffffffffffffff
-    magic_hash_b = lcg(magic_b ^ 0x36363636) & 0xffffffffffffffff
+    #magic_hash_a = lcg(lcg(magic_a ^ 0x5c5c5c5c)) & 0xffffffffffffffff
+    #magic_hash_b = lcg(magic_b ^ 0x36363636) & 0xffffffffffffffff
     hdr_offset = 20+hmx_header_size*8+16+48
     if version == 17:
         use_new_hidden_keys = int.from_bytes(mogg_data[hdr_offset:hdr_offset+8], "little")
@@ -639,7 +639,31 @@ def hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size, flog, verbose):
     decmogg_data[ogg_offset:ogg_offset+4] = bytearray(b'\x4f\x67\x67\x53')
     return
 
-def crypt_mogg(xbox, red, fin, fout, flog, verbose):
+def ogg_to_hmxa(encmogg_data, ogg_offset, hmx_header_size, flog, verbose):
+    magic_a = int.from_bytes(encmogg_data[20+hmx_header_size*8+16:20+hmx_header_size*8+20],"little")
+    magic_b = int.from_bytes(encmogg_data[20+hmx_header_size*8+16+8:20+hmx_header_size*8+16+12],"little")
+    magic_hash_a = lcg(lcg(magic_a ^ 0x5c5c5c5c)) & 0xffffffff
+    magic_hash_b = lcg(magic_b ^ 0x36363636) & 0xffffffff
+    magic_hash_a_bytes = bytearray(magic_hash_a.to_bytes(4, "big"))
+    magic_hash_b_bytes = bytearray(magic_hash_b.to_bytes(4, "big"))
+    if verbose:
+        flog.write(f'magic_a: {magic_a:08X}\n')
+        flog.write(f'magic_b: {magic_b:08X}\n')
+        flog.write(f'magic_hash_a: {magic_hash_a:08X}\n')
+        flog.write(f'magic_hash_b: {magic_hash_b:08X}\n')
+    mogg_hash_a = encmogg_data[ogg_offset+12:ogg_offset+16]
+    mogg_hash_b = encmogg_data[ogg_offset+20:ogg_offset+24]
+    mogg_unhash_a = bytearray(4)
+    mogg_unhash_b = bytearray(4)
+    for i in range(0,4):
+       mogg_unhash_a[i] = mogg_hash_a[i] ^ magic_hash_a_bytes[i]
+       mogg_unhash_b[i] = mogg_hash_b[i] ^ magic_hash_b_bytes[i]
+    encmogg_data[ogg_offset+12:ogg_offset+16] = mogg_unhash_a[0:4]
+    encmogg_data[ogg_offset+20:ogg_offset+24] = mogg_unhash_b[0:4]
+    encmogg_data[ogg_offset:ogg_offset+4] = bytearray(b'\x48\x4D\x58\x41')
+    return
+
+def decrypt_mogg(xbox, red, fin, fout, flog, verbose):
     failed = False
     mogg_data = fin.read()
     decmogg_data = bytearray(mogg_data)
@@ -754,5 +778,120 @@ def crypt_mogg(xbox, red, fin, fout, flog, verbose):
     if not failed:
         fout.write(decmogg_data)
 
+    fout.close()
+    return failed
+
+def reencrypt_mogg(xbox, red, enc_ver, fin, fout, flog, verbose):
+    failed = False
+    mogg_data = bytearray(fin.read())
+    encmogg_data = mogg_data
+
+    ogg_offset = int.from_bytes(mogg_data[4:8], "little")
+    hmx_header_size = int.from_bytes(mogg_data[16:20], "little")
+
+    if verbose:
+        if enc_ver == 13:
+            flog.write("mogg version: 13 (new C3)\n")
+        elif enc_ver == 11:
+            if encmogg_data[20+hmx_header_size*8:20+hmx_header_size*8+16] == bytearray(b'\x00\x00\x00\x00\x63\x33\x2d\x63\x75\x73\x74\x6F\x6D\x73\x31\x34'):
+                flog.write("mogg version: 11 (old C3)\n")
+            else:
+                flog.write(f'mogg version: {enc_ver}\n')
+        else:
+            flog.write(f'mogg version: {enc_ver}\n')
+
+    if red:
+        print("using red keys to encrypt")
+    else:
+        print("using green keys to encrypt")
+
+    match enc_ver:
+        case 11:
+            key = bytearray(ctrkey_11)
+            if verbose:
+                flog.write(f'AES key: {key.hex().upper()}\n')
+        case 12 | 13:
+            if red:
+                hvkey = hvkey_12_r
+            else:
+                hvkey = hvkey_12
+            if verbose:
+                flog.write(f'HvKey: {hvkey.hex().upper()}\n')
+            key = gen_key(xbox, hvkey, mogg_data, enc_ver, verbose, flog)
+        case 14:
+            if red:
+                hvkey = hvkey_14_r
+            else:
+                hvkey = hvkey_14
+            if verbose:
+                flog.write(f'HvKey: {hvkey.hex().upper()}\n')
+            key = gen_key(xbox, hvkey, mogg_data, 14, verbose, flog)
+        case 15:
+            if red:
+                hvkey = hvkey_15_r
+            else:
+                hvkey = hvkey_15
+            if verbose:
+                flog.write(f'HvKey: {hvkey.hex().upper()}\n')
+            key = gen_key(xbox, hvkey, mogg_data, 15, verbose, flog)
+        case 16:
+            if red:
+                hvkey = hvkey_16_r
+            else:
+                hvkey = hvkey_16
+            if verbose:
+                flog.write(f'HvKey: {hvkey.hex().upper()}\n')
+            key = gen_key(xbox, hvkey, mogg_data, 16, verbose, flog)
+        case 17:
+            if red:
+                hvkey = hvkey_17_r
+            else:
+                hvkey = hvkey_17
+            if verbose:
+                flog.write(f'HvKey: {hvkey.hex().upper()}\n')
+            key = gen_key(xbox, hvkey, mogg_data, 17, verbose, flog)
+        case _:
+            print("Unknown encryption version! Please notify LocalH and send him the song package.")
+            sys.exit(2)
+
+    if verbose:
+        flog.write(f'masher: {masher.hex().upper()}\n')
+        flog.write(f'ogg_offset: {ogg_offset}\n')
+        flog.write(f'hmx_header_size: {hmx_header_size} ({hmx_header_size*8} bytes)\n')
+   
+    encmogg_data[0:ogg_offset] = mogg_data[0:ogg_offset] # copy header to output buffer
+    
+    if enc_ver == 13 and encmogg_data[20+hmx_header_size*8+16+16:20+hmx_header_size*8+16+32] == bytearray(b'\xc3\xc3\xc3\xc3\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b'):
+        encmogg_data[20+hmx_header_size*8+16+16:20+hmx_header_size*8+16+32] = bytearray(b'\xa5\xce\xfd\x06\x11\x93\x23\x21\xf8\x87\x85\xea\x95\xe4\x94\xd4')
+
+    nonce_offset = 20 + hmx_header_size * 8
+    nonce = bytearray(mogg_data[nonce_offset:nonce_offset+16])
+    if verbose:
+        flog.write(f'nonce_offset: {nonce_offset}\n')
+        flog.write(f'nonce: {nonce.hex().upper()}\n')
+    
+    if enc_ver > 11:
+        if mogg_data[ogg_offset:ogg_offset+4] == bytearray(b'\x4f\x67\x67\x53'):
+            ogg_to_hmxa(mogg_data, ogg_offset, hmx_header_size, flog, verbose)
+        else:
+            print("decrypted data did not start with OggS (4F676753)")
+            if verbose:
+                flog.write(f'first four bytes of data: {encmogg_data[ogg_offset:ogg_offset+4].hex().upper()}\n')
+
+        if not mogg_data[ogg_offset:ogg_offset+4] == bytearray(b'\x48\x4D\x58\x41'):
+            print("HMXA header not present")
+            fout.close()
+            failed = True
+
+    if not failed:
+        
+        do_crypt(key, mogg_data, encmogg_data, nonce, ogg_offset, verbose, flog)
+    
+        encmogg_data[0] = enc_ver
+        print(f'encryption successful, wrote version {enc_ver} to mogg header')
+    
+        if not failed:
+            fout.write(encmogg_data)
+    
     fout.close()
     return failed
