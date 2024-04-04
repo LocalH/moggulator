@@ -133,11 +133,16 @@ def main():
     if outfile:
         fout = open(outfile, 'wb')
    
+    fin.seek(0)
+    ver = int.from_bytes(fin.read(4), "little")
+    fin.seek(0)
+
     if not enc_hdr:
-        if xbox:
-            print("using xbox keys for decryption")
-        else:
-            print("using ps3 keys for decryption")
+        if ver != 11:
+            if xbox:
+                print("using xbox keys for decryption")
+            else:
+                print("using ps3 keys for decryption")
 
 
     if enc_hdr:
@@ -146,8 +151,6 @@ def main():
         ret = mogglib.decrypt_mogg(xbox, red, fin, fout, flog, verbose)
 
     if not enc_hdr:
-        fin.seek(0)
-        ver = int.from_bytes(fin.read(4), "little")
         if ver != 10:
             if ret:
                 if not red:

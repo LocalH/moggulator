@@ -688,10 +688,11 @@ def decrypt_mogg(xbox, red, fin, fout, flog, verbose):
         else:
             flog.write(f'mogg version: {version}\n')
 
-    if red:
-        print("using red keys")
-    else:
-        print("using green keys")
+    if version != 11:
+        if red:
+            print("using red keys")
+        else:
+            print("using green keys")
 
     match version:
         case 11:
@@ -743,7 +744,8 @@ def decrypt_mogg(xbox, red, fin, fout, flog, verbose):
             sys.exit(2)
 
     if verbose:
-        flog.write(f'masher: {masher.hex().upper()}\n')
+        if version != 11:
+            flog.write(f'masher: {masher.hex().upper()}\n')
         flog.write(f'ogg_offset: {ogg_offset}\n')
         flog.write(f'hmx_header_size: {hmx_header_size} ({hmx_header_size*8} bytes)\n')
    
