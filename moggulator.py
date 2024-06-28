@@ -37,7 +37,7 @@ def main():
         usage()
         sys.exit(2)
     launched = os.path.relpath(sys.argv[0])
-    print(f'{launched} v1.5\n')
+    print(f'{launched} v1.6\n')
     no_opts = True
     encrypt = False
     enc_hdr = False
