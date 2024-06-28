@@ -138,7 +138,8 @@ def gen_key(xbox, hvkey, mogg_data, version, verbose, flog):
         
 def gen_key_inner(xbox, hvkey, mogg_data, version, verbose, flog):
     key_mask = bytearray(16)
-    bad_mask = bytearray(b'\xc3\xc3\xc3\xc3\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b')
+    bad_mask_1 = bytearray(b'\xc3\xc3\xc3\xc3\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b') #only if v13
+    bad_mask_2 = bytearray(b'\x6c\x6c\x65\x63\x74\x69\x76\x65\x2d\x74\x6f\x6f\x6c\x73\x2d\x62') #only if v12
     hmx_header_size = int.from_bytes(mogg_data[16:20], "little")
     if xbox:
         key_mask[0:16] = mogg_data[20+hmx_header_size*8+16+32:20+hmx_header_size*8+16+48]
@@ -146,9 +147,14 @@ def gen_key_inner(xbox, hvkey, mogg_data, version, verbose, flog):
         key_mask[0:16] = mogg_data[20+hmx_header_size*8+16+16:20+hmx_header_size*8+16+32]
     if verbose:
         flog.write(f'key_mask: {key_mask.hex().upper()}\n')
-    if not xbox and version == 13 and key_mask == bad_mask:
-        print("found bad C3 PS3 key mask, correcting")
+    if not xbox and version == 13 and key_mask == bad_mask_1:
+        print("found a bad C3 PS3 key mask, correcting")
         key_mask = bytearray(b'\xa5\xce\xfd\x06\x11\x93\x23\x21\xf8\x87\x85\xea\x95\xe4\x94\xd4')
+        if verbose:
+            flog.write(f'corrected key_mask: {key_mask.hex().upper()}\n')
+    if not xbox and version == 12 and key_mask == bad_mask_2:
+        print("found a bad C3 PS3 key mask, correcting")
+        key_mask = bytearray(b'\xf1\xb4\xb8\xb0\x48\xaf\xcb\x9b\x4b\x53\xe0\x56\x64\x57\x68\x39')
         if verbose:
             flog.write(f'corrected key_mask: {key_mask.hex().upper()}\n')
     if xbox:
@@ -685,6 +691,11 @@ def decrypt_mogg(xbox, red, fin, fout, flog, verbose):
                 flog.write("mogg version: 11 (old C3)\n")
             else:
                 flog.write(f'mogg version: {version}\n')
+        elif version == 12:
+            if decmogg_data[20+hmx_header_size*8+16+16:20+hmx_header_size*8+16+32] == bytearray(b'\x6c\x6c\x65\x63\x74\x69\x76\x65\x2d\x74\x6f\x6f\x6c\x73\x2d\x62') or decmogg_data[20+hmx_header_size*8+16+16:20+hmx_header_size*8+16+32] == bytearray(b'\xf1\xb4\xb8\xb0\x48\xaf\xcb\x9b\x4b\x53\xe0\x56\x64\x57\x68\x39'):
+                flog.write("mogg version: 12 (C3)\n")
+            else:
+                flog.write(f'mogg version: {version}\n')
         else:
             flog.write(f'mogg version: {version}\n')
 
@@ -754,6 +765,9 @@ def decrypt_mogg(xbox, red, fin, fout, flog, verbose):
     if version == 13 and decmogg_data[20+hmx_header_size*8+16+16:20+hmx_header_size*8+16+32] == bytearray(b'\xc3\xc3\xc3\xc3\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b'):
         decmogg_data[20+hmx_header_size*8+16+16:20+hmx_header_size*8+16+32] = bytearray(b'\xa5\xce\xfd\x06\x11\x93\x23\x21\xf8\x87\x85\xea\x95\xe4\x94\xd4')
 
+    if version == 12 and decmogg_data[20+hmx_header_size*8+16+16:20+hmx_header_size*8+16+32] == bytearray(b'\x6c\x6c\x65\x63\x74\x69\x76\x65\x2d\x74\x6f\x6f\x6c\x73\x2d\x62'):
+        decmogg_data[20+hmx_header_size*8+16+16:20+hmx_header_size*8+16+32] = bytearray(b'\xf1\xb4\xb8\xb0\x48\xaf\xcb\x9b\x4b\x53\xe0\x56\x64\x57\x68\x39')
+
     nonce_offset = 20 + hmx_header_size * 8
     nonce = bytearray(mogg_data[nonce_offset:nonce_offset+16])
     if verbose:
@@ -765,7 +779,7 @@ def decrypt_mogg(xbox, red, fin, fout, flog, verbose):
     if decmogg_data[ogg_offset:ogg_offset+4] == bytearray(b'\x48\x4d\x58\x41'):
         hmxa_to_ogg(decmogg_data, ogg_offset, hmx_header_size, flog, verbose)
     elif version != 11:
-        print("decrypted data did not start with HMXA (484D5841)")
+        print("decrypted data did not start with HMXA (484D5841), should be OggS (4F676753)")
         if verbose:
             flog.write(f'first four bytes of data: {decmogg_data[ogg_offset:ogg_offset+4].hex().upper()}\n')
 

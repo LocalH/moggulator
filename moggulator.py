@@ -4,7 +4,7 @@ import sys
 import os
 
 def usage():
-    print(f'usage: {os.path.relpath(sys.argv[0])} [-h] -i <input> -o <output> [-E --version=X] [-p] [-v]')
+    print(f'usage: {os.path.relpath(sys.argv[0])} [-h] -i <input> -o <output> [-E --version=X --subversion=X] [-p] [-v]')
     print("   -h / --help : print usage")
 #    print("   -e / --encrypt: encrypt mogg with arbitrary security values")
 #    print("      --version=X : version of encryption to use")
@@ -16,6 +16,7 @@ def usage():
 #    print("      --magic-b=XXXXXXXX : magicB in hex, v12+")
     print("   -E / --encrypt-header : encrypt using security values stored in header from prior decryption")
     print("      --version=X : version of encryption to use")
+    print("      --subversion=X : sub-version of encryption to use when doing v17 re-encryption")
     print("   -i <input> / --input=<input> : read mogg from <input>")
     print("   -o <output> / --output=<output> : write mogg to <output>")
     print("   -p / --ps3: use ps3 key to decrypt")
